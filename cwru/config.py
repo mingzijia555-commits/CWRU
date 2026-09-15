@@ -11,7 +11,6 @@ MANIFESTS_DIR = os.path.join(ARTIFACTS_DIR, "manifests")
 RUNS_DIR = os.path.join(ARTIFACTS_DIR, "runs")
 METRICS_DIR = os.path.join(ARTIFACTS_DIR, "metrics")
 FIGURES_DIR = os.path.join(ARTIFACTS_DIR, "figures")
-CACHE_DIR = os.path.join(ARTIFACTS_DIR, "cache")
 FULL_RUNS_DIR = os.path.join(ARTIFACTS_DIR, "full_runs")
 SPLITS_DIR = os.path.join(PROJECT_ROOT, "splits")
 
@@ -76,5 +75,5 @@ N_FORMAL_RUNS = len(SPLIT_SETS) * len(WINDOW_PLAN_ORDER) * len(EXPERIMENT_ORDER)
 
 def ensure_dirs() -> None:
     for d in (ARTIFACTS_DIR, MANIFESTS_DIR, RUNS_DIR, METRICS_DIR, FIGURES_DIR,
-              CACHE_DIR, FULL_RUNS_DIR, SPLITS_DIR):
+              FULL_RUNS_DIR, SPLITS_DIR):
         os.makedirs(d, exist_ok=True)

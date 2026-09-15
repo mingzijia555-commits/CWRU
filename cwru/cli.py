@@ -132,7 +132,7 @@ def build_parser() -> argparse.ArgumentParser:
     e.set_defaults(func=cmd_evaluate)
 
     f = sub.add_parser("compare", help="汇总指定批次的结果")
-    f.add_argument("--batch", required=True, help="批次目录（artifacts/full_runs/<timestamp>）")
+    f.add_argument("--batch", required=True, help="待汇总的批次目录（例如 artifacts/full_runs/formal_run）")
     f.set_defaults(func=cmd_compare)
 
     g = sub.add_parser("predict", help="加载权重并对指定 MAT 文件推理")

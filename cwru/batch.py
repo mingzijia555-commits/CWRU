@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""批次上下文：时间戳目录、run_config、划分快照与逐组更新的 README。
+"""批次上下文：正式结果目录、run_config、划分快照与逐组更新的 README。
 
-每次完整运行创建唯一目录 artifacts/full_runs/<YYYYmmdd_HHMMSS>/，不覆盖历史批次。
+完整运行统一写入 artifacts/full_runs/formal_run/。再次运行会覆盖同名结果，
+因此只在确实需要重新生成全部实验时使用。
 """
 from __future__ import annotations
 
@@ -46,13 +47,9 @@ class BatchContext:
 
     # ---------- 创建 ----------
     @classmethod
-    def create(cls, split_mappings: dict, records, timestamp: str | None = None,
-               plan: str = "full") -> "BatchContext":
-        ts = timestamp or _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-        batch_dir = os.path.join(FULL_RUNS_DIR, ts)
-        if os.path.exists(batch_dir):
-            raise FileExistsError(f"批次目录已存在，请勿覆盖：{batch_dir}")
-        os.makedirs(batch_dir, exist_ok=False)
+    def create(cls, split_mappings: dict, records, plan: str = "full") -> "BatchContext":
+        batch_dir = os.path.join(FULL_RUNS_DIR, "formal_run")
+        os.makedirs(batch_dir, exist_ok=True)
         ctx = cls(batch_dir, split_mappings, records, plan=plan)
         ctx.snapshot_splits()
         ctx.write_run_config()

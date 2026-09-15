@@ -10,7 +10,7 @@
 
 - Python 3.11（conda 环境 `AI2026Summer`）
 - torch 2.11.0+cu128（CUDA 可用即可，CPU 也能运行但更慢）
-- scipy / numpy / matplotlib / pandas / pytest
+- scipy / numpy / matplotlib / pandas
 
 ```bash
 pip install -r requirements.txt
@@ -27,10 +27,10 @@ python -m cwru audit-data
 # 2. 将代码中写死的 A/B/C 三套固定划分写入 splits/ 目录
 python -m cwru split-init
 
-# 3. 生成元数据与全部实验清单、窗口缓存（30 个清单）
+# 3. 生成元数据与全部实验清单（30 个清单）
 python -m cwru prepare
 
-# 4. 完整正式批次：新建时间戳目录并执行 90 组训练 + 评估 + 汇总
+# 4. 完整正式批次：写入固定目录 formal_run 并执行 90 组训练 + 评估 + 汇总
 python -m cwru full-run
 
 #    流程自检（不产生正式结论）：每组合 1 个 epoch，仅前 N 组
@@ -41,18 +41,12 @@ python -m cwru train --experiment 101DE --model CnnLstm --split A --window overl
 python -m cwru evaluate --experiment 101DE --model CnnLstm --split A --window overlap50
 
 # 6. 重新汇总某个批次
-python -m cwru compare --batch artifacts/full_runs/<timestamp>
+python -m cwru compare --batch artifacts/full_runs/formal_run
 
 # 7. 终端推理
 python -m cwru predict --experiment 101DE --model Cnn1d --file CaseWesternReserveUniversityData/normal_0_97.mat
 # DEFE 单通道实验必须显式指定测量端：
 python -m cwru predict --experiment 109DEFE --model CnnGru --file CaseWesternReserveUniversityData/12k_Fan_End_B007_0_282.mat --channel FE --split A --window no_overlap
-```
-
-自动测试：
-
-```bash
-pytest
 ```
 
 ## 实验配置
@@ -123,9 +117,8 @@ splits/
 artifacts/
 ├── metadata.csv                # 109 个文件的完整审计表
 ├── manifests/                  # 30 个实验清单（键 = 划分_输入_窗口）
-├── cache/                      # 窗口缓存（gitignore，可重建）
 ├── runs/                       # 单组命令的兼容输出
-└── full_runs/<时间戳>/          # 每次完整批次独立目录，不覆盖历史
+└── full_runs/formal_run/        # 完整批次固定目录；再次完整运行会覆盖同名结果
     ├── README.md               # 逐组更新进度与结果，含 A/B/C 均值标准差与结论
     ├── run_config.json
     ├── splits/                 # 本批次使用的三套划分快照

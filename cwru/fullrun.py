@@ -3,7 +3,7 @@
 
 用法：
     python -m cwru split-init        # 仅生成 A/B/C 固定划分（不训练）
-    python -m cwru full-run          # 新建批次并执行 90 组正式实验
+    python -m cwru full-run          # 写入 formal_run 并执行 90 组正式实验
     python -m cwru full-run --epochs 1 --limit 3   # 小型验证，用于检查流程
 """
 from __future__ import annotations
@@ -45,7 +45,7 @@ def run_full(epochs: int | None = None, verbose: bool = True,
         return None
 
     ctx = BatchContext.create(mappings, records)
-    print(f"[batch] 新批次目录：{ctx.batch_dir}")
+    print(f"[batch] 正式结果目录：{ctx.batch_dir}")
 
     total = len(SPLIT_SETS) * len(WINDOW_PLAN_ORDER) * len(EXPERIMENT_ORDER) * len(MODELS)
     done, failed = 0, 0

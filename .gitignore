@@ -1,11 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
-.pytest_cache/
 *.egg-info/
-
-# 训练缓存（窗口数组，可由 prepare 重建）
-artifacts/cache/
 
 # 完整批次结果（含旧基线归档，只保留本地，禁止进入远程提交）
 artifacts/full_runs/
