@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-"""训练器测试：合成小数据上的训练、断点续训、最佳权重推理。"""
+"""训练器测试：合成小数据上的训练、断点续训、最佳权重推理、验证 Macro-F1。"""
+import os
+
 import numpy as np
 import torch
 
-from cwru.config import EXPERIMENTS
+from cwru.config import EXPERIMENTS, MODELS
 from cwru.training.trainer import _evaluate_val, train_model
 
 
@@ -39,36 +41,36 @@ def _synthetic_arrays(n_per_class: int = 40, in_channels: int = 1):
         "norm": [{"mean": float(X.mean()), "std": float(X.std())}],
         "class_weights": [1.0, 1.0, 1.0, 1.0],
         "train_class_counts": [40, 40, 40, 40],
+        "window_len": 1024, "stride": 1024,
     }
 
 
 def test_train_and_resume(tmp_path):
     arrays = _synthetic_arrays()
     exp_cfg = EXPERIMENTS["101DE"]
-    out_dir = train_model("SYNTH", exp_cfg, arrays, "Cnn1d", epochs=2, seed=42)
-    import os
+    out_dir = str(tmp_path / "synth")
+    train_model("SYNTH", exp_cfg, arrays, "Cnn1d", out_dir=out_dir, epochs=2, seed=42)
     ckpt = torch.load(os.path.join(out_dir, "last_training.ckpt"),
                       map_location="cpu", weights_only=False)
     assert ckpt["epoch"] == 2
-    best_path = os.path.join(out_dir, "best_inference.pt")
-    assert os.path.exists(best_path)
+    assert os.path.exists(os.path.join(out_dir, "best_inference.pt"))
 
-    # 断点续训 1 个 epoch
-    train_model("SYNTH", exp_cfg, arrays, "Cnn1d", epochs=3, resume=True, seed=42)
+    train_model("SYNTH", exp_cfg, arrays, "Cnn1d", out_dir=out_dir, epochs=3, resume=True, seed=42)
     ckpt2 = torch.load(os.path.join(out_dir, "last_training.ckpt"),
                        map_location="cpu", weights_only=False)
     assert ckpt2["epoch"] == 3
     assert ckpt2["history"][0]["epoch"] == 1
 
 
-def test_best_weight_inference():
+def test_best_weight_inference(tmp_path):
     arrays = _synthetic_arrays()
     exp_cfg = EXPERIMENTS["101DE"]
-    out_dir = train_model("SYNTH2", exp_cfg, arrays, "Cnn1d", epochs=1, seed=42)
-    import os
+    out_dir = str(tmp_path / "synth2")
+    train_model("SYNTH2", exp_cfg, arrays, "CnnLstm", out_dir=out_dir, epochs=1, seed=42)
     ckpt = torch.load(os.path.join(out_dir, "best_inference.pt"),
                       map_location="cpu", weights_only=False)
-    model = build_model_for_test("Cnn1d", 1)
+    from cwru.models.models import build_model
+    model = build_model("CnnLstm", 1)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
     with torch.no_grad():
@@ -78,19 +80,25 @@ def test_best_weight_inference():
     assert torch.allclose(probs.sum(dim=1), torch.ones(8), atol=1e-4)
 
 
-def build_model_for_test(name, ch):
-    from cwru.models.models import build_model
-    return build_model(name, ch)
-
-
-def test_evaluate_val_metrics():
+def test_evaluate_val_metrics_include_f1():
     arrays = _synthetic_arrays(4)
-    model = build_model_for_test("CnnGru", 1)
     from torch.utils.data import DataLoader
     from cwru.data.dataset import CwruDataset
+    from cwru.models.models import build_model
+    model = build_model("CnnGru", 1)
     loader = DataLoader(CwruDataset(arrays, None), batch_size=16)
-    m = _evaluate_val(model, loader,
-                      torch.tensor(arrays["class_weights"]),
+    m = _evaluate_val(model, loader, torch.tensor(arrays["class_weights"]),
                       torch.device("cpu"))
-    for key in ("val_loss", "val_acc", "val_mae", "val_rmse"):
+    for key in ("val_loss", "val_acc", "val_f1", "val_mae", "val_rmse"):
         assert key in m
+    assert 0.0 <= m["val_f1"] <= 1.0
+
+
+def test_all_models_train_one_epoch(tmp_path):
+    arrays = _synthetic_arrays(8)
+    exp_cfg = EXPERIMENTS["101DE"]
+    for name in MODELS:
+        out_dir = str(tmp_path / f"m_{name}")
+        train_model("SYNTH3", exp_cfg, arrays, name, out_dir=out_dir, epochs=1,
+                    seed=42, verbose=False)
+        assert os.path.exists(os.path.join(out_dir, "best_inference.pt")), name

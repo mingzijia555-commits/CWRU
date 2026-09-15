@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""模型定义：Cnn1d 与 CnnGru，均输出四分类 logits + 一个连续故障直径。"""
+"""模型定义：Cnn1d / CnnGru / CnnLstm，均输出四分类 logits + 一个连续故障直径。
+
+三个模型共享同一 CNN 主干与输出头；CnnGru 与 CnnLstm 仅循环单元不同
+（单层双向，单方向隐藏 64，拼接双向状态得到 128 维共享特征）。
+"""
 from __future__ import annotations
 
 import torch
@@ -73,11 +77,34 @@ class CnnGru(nn.Module):
         return {"logits": self.heads["cls"](f), "diameter": self.heads["reg"](f).squeeze(-1)}
 
 
+class CnnLstm(nn.Module):
+    """与 CnnGru 结构对齐，仅将循环单元替换为单层双向 LSTM（单方向隐藏 64）。"""
+
+    def __init__(self, in_channels: int = 1):
+        super().__init__()
+        self.trunk = _cnn_trunk(in_channels)
+        self.lstm = nn.LSTM(input_size=FEATURE_DIM, hidden_size=64, num_layers=1,
+                            batch_first=True, bidirectional=True)
+        self.heads = _heads(feature_dim=128)  # 64 * 2 双向拼接
+
+    def extract(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.trunk(x)                     # [B, 128, L]
+        seq = h.transpose(1, 2)               # [B, L, 128]
+        _, (hn, _) = self.lstm(seq)           # hn: [2, B, 64]
+        return torch.cat([hn[0], hn[1]], dim=-1)
+
+    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+        f = self.extract(x)
+        return {"logits": self.heads["cls"](f), "diameter": self.heads["reg"](f).squeeze(-1)}
+
+
 def build_model(name: str, in_channels: int = 1) -> nn.Module:
     if name == "Cnn1d":
         return Cnn1d(in_channels)
     if name == "CnnGru":
         return CnnGru(in_channels)
+    if name == "CnnLstm":
+        return CnnLstm(in_channels)
     raise ValueError(f"未知模型: {name}")
 
 
