@@ -1,0 +1,542 @@
+{
+  "experiment": "109DE",
+  "display": "109文件 全DE",
+  "model": "Cnn1d",
+  "checkpoint": {
+    "epoch": 35,
+    "val_loss": 0.35768612740468003
+  },
+  "window_level": {
+    "n_windows": 2004,
+    "accuracy": 0.9191616766467066,
+    "macro_f1": 0.936679504206672,
+    "confusion_matrix": [
+      [
+        118,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        563,
+        27,
+        0
+      ],
+      [
+        0,
+        47,
+        708,
+        70
+      ],
+      [
+        0,
+        2,
+        16,
+        453
+      ]
+    ],
+    "per_class": {
+      "0": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 118
+      },
+      "1": {
+        "precision": 0.9199346405228758,
+        "recall": 0.9542372881355933,
+        "f1": 0.9367720465890184,
+        "support": 590
+      },
+      "2": {
+        "precision": 0.9427430093209055,
+        "recall": 0.8581818181818182,
+        "f1": 0.8984771573604061,
+        "support": 825
+      },
+      "3": {
+        "precision": 0.8661567877629063,
+        "recall": 0.9617834394904459,
+        "f1": 0.9114688128772636,
+        "support": 471
+      }
+    },
+    "regression": {
+      "mae_scaled": 0.41461291909217834,
+      "rmse_scaled": 0.5477374792098999,
+      "mae_mil": 2.9022903442382812,
+      "rmse_mil": 3.8341622352600098,
+      "per_diameter": {
+        "7mil": {
+          "n": 591,
+          "mae_scaled": 0.27598002552986145,
+          "rmse_scaled": 0.3574695289134979,
+          "mae_mil": 1.9318602085113525,
+          "rmse_mil": 2.502286672592163
+        },
+        "14mil": {
+          "n": 354,
+          "mae_scaled": 0.3579173684120178,
+          "rmse_scaled": 0.42895227670669556,
+          "mae_mil": 2.5054216384887695,
+          "rmse_mil": 3.0026659965515137
+        },
+        "21mil": {
+          "n": 705,
+          "mae_scaled": 0.6259416341781616,
+          "rmse_scaled": 0.7614961266517639,
+          "mae_mil": 4.381591320037842,
+          "rmse_mil": 5.330472946166992
+        },
+        "28mil": {
+          "n": 236,
+          "mae_scaled": 0.21552616357803345,
+          "rmse_scaled": 0.2633018493652344,
+          "mae_mil": 1.508683204650879,
+          "rmse_mil": 1.8431129455566406
+        }
+      }
+    }
+  },
+  "file_level": {
+    "n_files": 17,
+    "accuracy": 0.9411764705882353,
+    "macro_f1": 0.9529914529914529,
+    "confusion_matrix": [
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "per_class": {
+      "0": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "1": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5
+      },
+      "2": {
+        "precision": 1.0,
+        "recall": 0.8571428571428571,
+        "f1": 0.923076923076923,
+        "support": 7
+      },
+      "3": {
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1": 0.888888888888889,
+        "support": 4
+      }
+    },
+    "regression": {
+      "mae_mil": 0.0,
+      "rmse_mil": 0.0,
+      "n_fault_files": 16
+    },
+    "rows": [
+      {
+        "filename": "12k_Drive_End_B028_2_3007.mat",
+        "split": "test",
+        "end": "Drive",
+        "fault": "B",
+        "diameter_mil": 28.0,
+        "load": 2,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 3,
+        "pred_cls": 3,
+        "pred_prob": [
+          1.3329236935533118e-05,
+          5.787968621007167e-05,
+          1.0470545930729713e-05,
+          0.9999183416366577
+        ],
+        "pred_diameter_mil": 28.0
+      },
+      {
+        "filename": "12k_Drive_End_IR028_2_3003.mat",
+        "split": "test",
+        "end": "Drive",
+        "fault": "IR",
+        "diameter_mil": 28.0,
+        "load": 2,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 1,
+        "pred_cls": 1,
+        "pred_prob": [
+          3.781546411119052e-06,
+          0.9998295307159424,
+          9.667472795626963e-07,
+          0.00016554928151890635
+        ],
+        "pred_diameter_mil": 28.0
+      },
+      {
+        "filename": "12k_Fan_End_B014_1_287.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "B",
+        "diameter_mil": 14.0,
+        "load": 1,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 3,
+        "pred_cls": 3,
+        "pred_prob": [
+          0.0010033473372459412,
+          0.0405825637280941,
+          0.09772196412086487,
+          0.8606919646263123
+        ],
+        "pred_diameter_mil": 14.0
+      },
+      {
+        "filename": "12k_Fan_End_B021_1_291.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "B",
+        "diameter_mil": 21.0,
+        "load": 1,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 3,
+        "pred_cls": 3,
+        "pred_prob": [
+          2.094373030558927e-06,
+          0.0005496818921528757,
+          0.0012227409752085805,
+          0.9982256293296814
+        ],
+        "pred_diameter_mil": 21.0
+      },
+      {
+        "filename": "12k_Fan_End_B021_3_293.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "B",
+        "diameter_mil": 21.0,
+        "load": 3,
+        "or_clock": null,
+        "n_windows": 117,
+        "true_cls": 3,
+        "pred_cls": 3,
+        "pred_prob": [
+          4.266445102985017e-06,
+          0.00035359678440727293,
+          0.1479007452726364,
+          0.8517412543296814
+        ],
+        "pred_diameter_mil": 21.0
+      },
+      {
+        "filename": "12k_Fan_End_IR007_2_280.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "IR",
+        "diameter_mil": 7.0,
+        "load": 2,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 1,
+        "pred_cls": 1,
+        "pred_prob": [
+          3.6836798244621605e-05,
+          0.9425301551818848,
+          0.05094419792294502,
+          0.006488754879683256
+        ],
+        "pred_diameter_mil": 7.0
+      },
+      {
+        "filename": "12k_Fan_End_IR014_3_277.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "IR",
+        "diameter_mil": 14.0,
+        "load": 3,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 1,
+        "pred_cls": 1,
+        "pred_prob": [
+          3.8897320337127894e-05,
+          0.6470640897750854,
+          0.27810239791870117,
+          0.07479474693536758
+        ],
+        "pred_diameter_mil": 14.0
+      },
+      {
+        "filename": "12k_Fan_End_IR021_0_270.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "IR",
+        "diameter_mil": 21.0,
+        "load": 0,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 1,
+        "pred_cls": 1,
+        "pred_prob": [
+          6.196185609042004e-08,
+          0.992456316947937,
+          0.0038613458164036274,
+          0.0036822198890149593
+        ],
+        "pred_diameter_mil": 21.0
+      },
+      {
+        "filename": "12k_Fan_End_IR021_3_273.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "IR",
+        "diameter_mil": 21.0,
+        "load": 3,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 1,
+        "pred_cls": 1,
+        "pred_prob": [
+          3.430161987783009e-10,
+          0.9997748136520386,
+          0.00011132059444207698,
+          0.00011398618516977876
+        ],
+        "pred_diameter_mil": 21.0
+      },
+      {
+        "filename": "12k_Fan_End_OR007@12_0_302.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "OR",
+        "diameter_mil": 7.0,
+        "load": 0,
+        "or_clock": 12,
+        "n_windows": 118,
+        "true_cls": 2,
+        "pred_cls": 3,
+        "pred_prob": [
+          0.0007877051248215139,
+          0.3666194677352905,
+          0.23882807791233063,
+          0.39376482367515564
+        ],
+        "pred_diameter_mil": 7.0
+      },
+      {
+        "filename": "12k_Fan_End_OR007@12_1_305.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "OR",
+        "diameter_mil": 7.0,
+        "load": 1,
+        "or_clock": 12,
+        "n_windows": 118,
+        "true_cls": 2,
+        "pred_cls": 2,
+        "pred_prob": [
+          1.0027372809418011e-05,
+          0.0016085933893918991,
+          0.8722105026245117,
+          0.1261710375547409
+        ],
+        "pred_diameter_mil": 7.0
+      },
+      {
+        "filename": "12k_Fan_End_OR007@3_2_300.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "OR",
+        "diameter_mil": 7.0,
+        "load": 2,
+        "or_clock": 3,
+        "n_windows": 119,
+        "true_cls": 2,
+        "pred_cls": 2,
+        "pred_prob": [
+          4.56787438452011e-06,
+          0.0008694927673786879,
+          0.9362163543701172,
+          0.06290959566831589
+        ],
+        "pred_diameter_mil": 7.0
+      },
+      {
+        "filename": "12k_Fan_End_OR007@6_2_296.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "OR",
+        "diameter_mil": 7.0,
+        "load": 2,
+        "or_clock": 6,
+        "n_windows": 118,
+        "true_cls": 2,
+        "pred_cls": 2,
+        "pred_prob": [
+          1.6831369066494517e-05,
+          0.02026464231312275,
+          0.8953558802604675,
+          0.0843627005815506
+        ],
+        "pred_diameter_mil": 7.0
+      },
+      {
+        "filename": "12k_Fan_End_OR014@3_2_311.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "OR",
+        "diameter_mil": 14.0,
+        "load": 2,
+        "or_clock": 3,
+        "n_windows": 118,
+        "true_cls": 2,
+        "pred_cls": 2,
+        "pred_prob": [
+          3.312687013590221e-08,
+          0.05608716234564781,
+          0.9416291117668152,
+          0.0022836218122392893
+        ],
+        "pred_diameter_mil": 14.0
+      },
+      {
+        "filename": "12k_Fan_End_OR021@3_2_317.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "OR",
+        "diameter_mil": 21.0,
+        "load": 2,
+        "or_clock": 3,
+        "n_windows": 117,
+        "true_cls": 2,
+        "pred_cls": 2,
+        "pred_prob": [
+          1.0000056818171288e-06,
+          0.01983739249408245,
+          0.9391248226165771,
+          0.04103665053844452
+        ],
+        "pred_diameter_mil": 21.0
+      },
+      {
+        "filename": "12k_Fan_End_OR021@6_0_315.mat",
+        "split": "test",
+        "end": "Fan",
+        "fault": "OR",
+        "diameter_mil": 21.0,
+        "load": 0,
+        "or_clock": 6,
+        "n_windows": 117,
+        "true_cls": 2,
+        "pred_cls": 2,
+        "pred_prob": [
+          6.928733142785859e-09,
+          0.049157969653606415,
+          0.9508415460586548,
+          3.58065960881504e-07
+        ],
+        "pred_diameter_mil": 21.0
+      },
+      {
+        "filename": "normal_1_98.mat",
+        "split": "test",
+        "end": "Normal",
+        "fault": "Normal",
+        "diameter_mil": 0.0,
+        "load": 1,
+        "or_clock": null,
+        "n_windows": 118,
+        "true_cls": 0,
+        "pred_cls": 0,
+        "pred_prob": [
+          0.9999235272407532,
+          1.9786648408626206e-05,
+          2.6639892894309014e-05,
+          3.0511715522152372e-05
+        ],
+        "pred_diameter_mil": 0.0
+      }
+    ]
+  },
+  "or_clock": {
+    "3点钟": {
+      "n_windows": 354,
+      "or_recall": 0.9887005649717514,
+      "mae_mil": 1.7923892736434937,
+      "rmse_mil": 2.2087419033050537
+    },
+    "6点钟": {
+      "n_windows": 235,
+      "or_recall": 0.9659574468085106,
+      "mae_mil": 3.697489023208618,
+      "rmse_mil": 4.5306501388549805
+    },
+    "12点钟": {
+      "n_windows": 236,
+      "or_recall": 0.5550847457627118,
+      "mae_mil": 2.4568052291870117,
+      "rmse_mil": 3.1149210929870605
+    }
+  },
+  "mil28": {
+    "n_windows": 236,
+    "accuracy": 1.0,
+    "macro_f1": 0.5,
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        118,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        118
+      ]
+    ],
+    "mae_mil": 1.508683204650879,
+    "rmse_mil": 1.8431129455566406
+  }
+}

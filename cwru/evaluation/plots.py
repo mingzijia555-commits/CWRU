@@ -162,16 +162,16 @@ def plot_compare_regression(rows: list[dict]) -> str:
 
 
 def plot_compare_window_file(rows: list[dict]) -> str:
-    """rows: [{experiment, model, window_acc, file_acc, window_f1, file_f1}]"""
+    """rows: [{experiment, model, accuracy, file_accuracy, macro_f1, file_macro_f1}]"""
     labels = [f"{r['experiment']}\n{r['model']}" for r in rows]
     x = np.arange(len(rows))
     fig, axes = plt.subplots(1, 2, figsize=(14, 4.6))
-    axes[0].bar(x - 0.2, [r["window_acc"] for r in rows], 0.4, label="窗口级")
-    axes[0].bar(x + 0.2, [r["file_acc"] for r in rows], 0.4, label="文件级")
+    axes[0].bar(x - 0.2, [r["accuracy"] for r in rows], 0.4, label="窗口级")
+    axes[0].bar(x + 0.2, [r["file_accuracy"] for r in rows], 0.4, label="文件级")
     axes[0].set_title("Accuracy：窗口级 vs 文件级")
     axes[0].set_ylim(0, 1.05)
-    axes[1].bar(x - 0.2, [r["window_f1"] for r in rows], 0.4, label="窗口级")
-    axes[1].bar(x + 0.2, [r["file_f1"] for r in rows], 0.4, label="文件级")
+    axes[1].bar(x - 0.2, [r["macro_f1"] for r in rows], 0.4, label="窗口级")
+    axes[1].bar(x + 0.2, [r["file_macro_f1"] for r in rows], 0.4, label="文件级")
     axes[1].set_title("Macro-F1：窗口级 vs 文件级")
     axes[1].set_ylim(0, 1.05)
     for ax in axes:
