@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""实验数组构建、缓存与 Dataset。
+"""实验数组构建与 Dataset。
 
 每个「划分集 × 窗口方案 × 输入方案」组合的数据布局在 prepare 阶段固化：
 - 先按文件清单划分 train/val/test，再在各集合内部切窗口；
 - 窗口长度固定 1024，步长由窗口方案决定（无重叠 1024 / 50% 重叠 512）；
 - 归一化参数仅由该组合训练集窗口计算；
-- 数组缓存为 .npz（gitignore），键包含划分集与步长，避免方案之间误用。
+- 实验数组按需在内存中构建，不写入窗口缓存。
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import os
 import numpy as np
 import torch
 
-from cwru.config import (CACHE_DIR, CLASSES, MANIFESTS_DIR, REG_SCALE, SIGNAL_SR,
+from cwru.config import (CLASSES, MANIFESTS_DIR, REG_SCALE, SIGNAL_SR,
                          WINDOW_LEN, WINDOW_PLANS)
 from cwru.data.audit import FileRecord
 from cwru.data.signals import load_channel, make_windows
@@ -36,7 +36,7 @@ def channel_roles_for(exp_cfg: dict, record: FileRecord) -> list[str]:
 
 
 def run_key(split_name: str, exp_id: str, window_plan: str) -> str:
-    """缓存与清单的复合键：划分集 + 输入方案 + 窗口方案。"""
+    """实验清单的复合键：划分集 + 输入方案 + 窗口方案。"""
     return f"{split_name}_{exp_id}_{window_plan}"
 
 
@@ -141,10 +141,6 @@ def build_experiment_arrays(exp_id: str, exp_cfg: dict, records: list[FileRecord
     }
 
 
-def cache_path(key: str) -> str:
-    return os.path.join(CACHE_DIR, f"{key}.npz")
-
-
 def manifest_path(key: str) -> str:
     return os.path.join(MANIFESTS_DIR, f"experiment_{key}.json")
 
@@ -152,39 +148,9 @@ def manifest_path(key: str) -> str:
 def get_experiment_arrays(split_name: str, exp_id: str, exp_cfg: dict,
                           records: list[FileRecord], split_of: dict[str, str],
                           window_plan: str = "no_overlap") -> dict:
-    """优先读取缓存，否则构建并写缓存。键包含划分集与窗口方案。"""
+    """直接构建实验数组，并更新对应实验清单。"""
     key = run_key(split_name, exp_id, window_plan)
-    path = cache_path(key)
-    mpath = manifest_path(key)
-    if os.path.exists(path) and os.path.exists(mpath):
-        with open(mpath, "r", encoding="utf-8") as f:
-            meta = json.load(f)
-        plan = WINDOW_PLANS[window_plan]
-        cache_matches = (
-            meta.get("split_set") == split_name
-            and meta.get("experiment") == exp_id
-            and meta.get("window_plan") == window_plan
-            and meta.get("config") == exp_cfg
-            and meta.get("split") == split_of
-            and meta.get("window_len") == plan["window_len"]
-            and meta.get("stride") == plan["stride"]
-        )
-        if cache_matches:
-            data = dict(np.load(path, allow_pickle=False))
-            data["files"] = meta["files"]
-            data["norm"] = meta["norm"]
-            data["class_weights"] = np.asarray(meta["class_weights"], dtype=np.float32)
-            data["train_class_counts"] = meta["train_class_counts"]
-            data["window_len"] = meta["window_len"]
-            data["stride"] = meta["stride"]
-            return data
-
     arrays = build_experiment_arrays(exp_id, exp_cfg, records, split_of, window_plan)
-    np.savez_compressed(
-        path,
-        X=arrays["X"], y_cls=arrays["y_cls"], y_reg=arrays["y_reg"],
-        reg_mask=arrays["reg_mask"], file_idx=arrays["file_idx"],
-    )
     save_experiment_manifest(key, split_name, exp_id, exp_cfg, window_plan, arrays, split_of)
     return arrays
 
