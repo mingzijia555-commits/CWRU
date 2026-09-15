@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""自动图表生成（matplotlib Agg，中文字体 Microsoft YaHei）。"""
+"""自动图表生成（matplotlib Agg，中文字体 Microsoft YaHei）。
+
+所有绘图函数接受 fig_dir 输出目录，由调用方决定写入批次目录还是临时目录。
+"""
 from __future__ import annotations
 
-import json
 import os
 
 import matplotlib
@@ -11,21 +13,28 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from cwru.config import CLASSES, FIGURES_DIR
+from cwru.config import CLASSES
 
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False
 
 
-def _save(fig, name: str) -> str:
-    path = os.path.join(FIGURES_DIR, name)
+def _save(fig, fig_dir: str, name: str) -> str:
+    os.makedirs(fig_dir, exist_ok=True)
+    path = os.path.join(fig_dir, name)
     fig.tight_layout()
     fig.savefig(path, dpi=150)
     plt.close(fig)
     return path
 
 
-def plot_loss_curves(history: list[dict], experiment: str, model: str) -> str:
+def _title(experiment: str, model: str, split_name: str = "", window_plan: str = "") -> str:
+    tag = " / ".join(t for t in (split_name, window_plan, experiment, model) if t)
+    return tag
+
+
+def plot_loss_curves(history: list[dict], fig_dir: str, experiment: str, model: str,
+                     split_name: str = "", window_plan: str = "") -> str:
     ep = [h["epoch"] for h in history]
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     for ax, keys, title in (
@@ -39,11 +48,12 @@ def plot_loss_curves(history: list[dict], experiment: str, model: str) -> str:
         ax.set_xlabel("epoch")
         ax.legend()
         ax.grid(alpha=0.3)
-    fig.suptitle(f"{experiment} / {model} 损失曲线")
-    return _save(fig, f"loss_curves_{experiment}_{model}.png")
+    fig.suptitle(f"{_title(experiment, model, split_name, window_plan)} 损失曲线")
+    return _save(fig, fig_dir, "loss_curves.png")
 
 
-def plot_val_curves(history: list[dict], experiment: str, model: str) -> str:
+def plot_val_curves(history: list[dict], fig_dir: str, experiment: str, model: str,
+                    split_name: str = "", window_plan: str = "") -> str:
     ep = [h["epoch"] for h in history]
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     axes[0].plot(ep, [h["val_acc"] for h in history], label="val Accuracy")
@@ -61,12 +71,12 @@ def plot_val_curves(history: list[dict], experiment: str, model: str) -> str:
     axes[2].grid(alpha=0.3)
     for ax in axes:
         ax.set_xlabel("epoch")
-    fig.suptitle(f"{experiment} / {model} 验证指标曲线")
-    return _save(fig, f"val_curves_{experiment}_{model}.png")
+    fig.suptitle(f"{_title(experiment, model, split_name, window_plan)} 验证指标曲线")
+    return _save(fig, fig_dir, "val_curves.png")
 
 
-def plot_confusion_matrix(cm: list[list[int]], experiment: str, model: str,
-                          level: str = "window") -> str:
+def plot_confusion_matrix(cm: list[list[int]], fig_dir: str, experiment: str, model: str,
+                          level: str = "window", split_name: str = "", window_plan: str = "") -> str:
     arr = np.asarray(cm, dtype=float)
     norm = arr / np.clip(arr.sum(axis=1, keepdims=True), 1e-9, None)
     fig, ax = plt.subplots(figsize=(5.2, 4.6))
@@ -79,27 +89,29 @@ def plot_confusion_matrix(cm: list[list[int]], experiment: str, model: str,
                     color="white" if norm[i, j] > 0.5 else "black", fontsize=9)
     ax.set_xlabel("预测类别")
     ax.set_ylabel("真实类别")
-    ax.set_title(f"{experiment} / {model} 混淆矩阵（{level}级）")
+    ax.set_title(f"{_title(experiment, model, split_name, window_plan)} 混淆矩阵（{level}级）")
     fig.colorbar(im, ax=ax, fraction=0.046)
-    return _save(fig, f"confusion_{level}_{experiment}_{model}.png")
+    return _save(fig, fig_dir, f"confusion_{level}.png")
 
 
-def plot_per_class(prf: dict, experiment: str, model: str) -> str:
+def plot_per_class(prf: dict, fig_dir: str, experiment: str, model: str,
+                   split_name: str = "", window_plan: str = "") -> str:
     x = np.arange(len(CLASSES))
     width = 0.25
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
-    for k, (metric, off) in enumerate((("precision", -width), ("recall", 0.0), ("f1", width))):
+    for metric, off in (("precision", -width), ("recall", 0.0), ("f1", width)):
         vals = [prf[str(c)][metric] for c in range(len(CLASSES))]
         ax.bar(x + off, vals, width, label=metric)
     ax.set_xticks(x, CLASSES)
     ax.set_ylim(0, 1.05)
-    ax.set_title(f"{experiment} / {model} 各类别 Precision / Recall / F1")
+    ax.set_title(f"{_title(experiment, model, split_name, window_plan)} 各类别 Precision / Recall / F1")
     ax.legend()
     ax.grid(alpha=0.3, axis="y")
-    return _save(fig, f"perclass_{experiment}_{model}.png")
+    return _save(fig, fig_dir, "perclass.png")
 
 
-def plot_diameter_errors(per_diameter: dict, experiment: str, model: str) -> str:
+def plot_diameter_errors(per_diameter: dict, fig_dir: str, experiment: str, model: str,
+                         split_name: str = "", window_plan: str = "") -> str:
     dias = sorted(per_diameter.keys())
     mae = [per_diameter[d]["mae_mil"] for d in dias]
     rmse = [per_diameter[d]["rmse_mil"] for d in dias]
@@ -108,14 +120,15 @@ def plot_diameter_errors(per_diameter: dict, experiment: str, model: str) -> str
     ax.bar(x - 0.2, mae, 0.4, label="MAE (mil)")
     ax.bar(x + 0.2, rmse, 0.4, label="RMSE (mil)")
     ax.set_xticks(x, dias)
-    ax.set_title(f"{experiment} / {model} 各直径档位回归误差")
+    ax.set_title(f"{_title(experiment, model, split_name, window_plan)} 各直径档位回归误差")
     ax.set_ylabel("误差 (mil)")
     ax.legend()
     ax.grid(alpha=0.3, axis="y")
-    return _save(fig, f"diameter_{experiment}_{model}.png")
+    return _save(fig, fig_dir, "diameter.png")
 
 
-def plot_or_clock(or_stat: dict, experiment: str, model: str) -> str:
+def plot_or_clock(or_stat: dict, fig_dir: str, experiment: str, model: str,
+                  split_name: str = "", window_plan: str = "") -> str:
     clocks = [c for c in ("3点钟", "6点钟", "12点钟") if c in or_stat]
     recalls = [or_stat[c].get("or_recall", np.nan) for c in clocks]
     maes = [or_stat[c].get("mae_mil", np.nan) for c in clocks]
@@ -129,53 +142,97 @@ def plot_or_clock(or_stat: dict, experiment: str, model: str) -> str:
     for ax in axes:
         ax.set_xticks(x, clocks)
         ax.grid(alpha=0.3, axis="y")
-    fig.suptitle(f"{experiment} / {model} 外圈位置细分")
-    return _save(fig, f"or_clock_{experiment}_{model}.png")
+    fig.suptitle(f"{_title(experiment, model, split_name, window_plan)} 外圈位置细分")
+    return _save(fig, fig_dir, "or_clock.png")
 
 
-def plot_compare_classification(rows: list[dict]) -> str:
-    """rows: [{experiment, model, accuracy, macro_f1}] 10 组。"""
-    labels = [f"{r['experiment']}\n{r['model']}" for r in rows]
-    x = np.arange(len(rows))
-    fig, ax = plt.subplots(figsize=(13, 4.6))
-    ax.bar(x - 0.2, [r["accuracy"] for r in rows], 0.4, label="Accuracy")
-    ax.bar(x + 0.2, [r["macro_f1"] for r in rows], 0.4, label="Macro-F1")
-    ax.set_xticks(x, labels, fontsize=8)
-    ax.set_ylim(0, 1.05)
-    ax.set_title("10 组实验分类指标对比（测试集，窗口级）")
+def _grouped_bar(fig_dir: str, name: str, title: str, ylabel: str,
+                 labels: list[str], series: list[tuple[str, list[float]]],
+                 ylim: tuple[float, float] | None = None, figsize=(14, 5.0)) -> str:
+    x = np.arange(len(labels))
+    width = 0.8 / max(len(series), 1)
+    fig, ax = plt.subplots(figsize=figsize)
+    for k, (label, vals) in enumerate(series):
+        ax.bar(x + (k - (len(series) - 1) / 2) * width, vals, width, label=label)
+    ax.set_xticks(x, labels, fontsize=6, rotation=90)
+    if ylim:
+        ax.set_ylim(*ylim)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
     ax.legend()
     ax.grid(alpha=0.3, axis="y")
-    return _save(fig, "compare_classification.png")
+    return _save(fig, fig_dir, name)
 
 
-def plot_compare_regression(rows: list[dict]) -> str:
-    labels = [f"{r['experiment']}\n{r['model']}" for r in rows]
-    x = np.arange(len(rows))
-    fig, ax = plt.subplots(figsize=(13, 4.6))
-    ax.bar(x - 0.2, [r["mae_mil"] for r in rows], 0.4, label="MAE (mil)")
-    ax.bar(x + 0.2, [r["rmse_mil"] for r in rows], 0.4, label="RMSE (mil)")
-    ax.set_xticks(x, labels, fontsize=8)
-    ax.set_title("10 组实验回归指标对比（测试集，窗口级）")
-    ax.legend()
-    ax.grid(alpha=0.3, axis="y")
-    return _save(fig, "compare_regression.png")
+def _config_keys(rows: list[dict], group_by: tuple[str, ...]) -> list[tuple]:
+    seen, out = set(), []
+    for r in rows:
+        key = tuple(r.get(k) for k in group_by)
+        if key not in seen:
+            seen.add(key)
+            out.append(key)
+    return out
 
 
-def plot_compare_window_file(rows: list[dict]) -> str:
-    """rows: [{experiment, model, accuracy, file_accuracy, macro_f1, file_macro_f1}]"""
-    labels = [f"{r['experiment']}\n{r['model']}" for r in rows]
-    x = np.arange(len(rows))
-    fig, axes = plt.subplots(1, 2, figsize=(14, 4.6))
-    axes[0].bar(x - 0.2, [r["accuracy"] for r in rows], 0.4, label="窗口级")
-    axes[0].bar(x + 0.2, [r["file_accuracy"] for r in rows], 0.4, label="文件级")
-    axes[0].set_title("Accuracy：窗口级 vs 文件级")
-    axes[0].set_ylim(0, 1.05)
-    axes[1].bar(x - 0.2, [r["macro_f1"] for r in rows], 0.4, label="窗口级")
-    axes[1].bar(x + 0.2, [r["file_macro_f1"] for r in rows], 0.4, label="文件级")
-    axes[1].set_title("Macro-F1：窗口级 vs 文件级")
-    axes[1].set_ylim(0, 1.05)
-    for ax in axes:
-        ax.set_xticks(x, labels, fontsize=8)
-        ax.legend()
-        ax.grid(alpha=0.3, axis="y")
-    return _save(fig, "compare_window_file.png")
+def _lookup(rows: list[dict], group_by: tuple[str, ...], key: tuple, metric: str):
+    for r in rows:
+        if tuple(r.get(k) for k in group_by) == key:
+            v = r.get(metric)
+            return float(v) if v is not None else float("nan")
+    return float("nan")
+
+
+def _label(key: tuple) -> str:
+    return "|".join(str(k) for k in key)
+
+
+def plot_split_comparison(rows: list[dict], fig_dir: str) -> list[str]:
+    """对比 A/B/C 三套划分：按 (窗口, 输入, 模型) 分组。"""
+    group_by = ("window_plan", "experiment", "model")
+    keys = _config_keys(rows, group_by)
+    labels = [_label(k) for k in keys]
+    paths = []
+    for metric, name, title, ylim in (
+        ("file_accuracy", "split_comparison_accuracy.png", "三套划分对比：文件级 Accuracy", (0, 1.05)),
+        ("file_macro_f1", "split_comparison_f1.png", "三套划分对比：文件级 Macro-F1", (0, 1.05)),
+        ("file_mae_mil", "split_comparison_regression.png", "三套划分对比：文件级直径 MAE", None),
+    ):
+        series = [(f"划分{s}", [_lookup(rows, ("split",) + group_by, (s,) + k, metric) for k in keys])
+                  for s in ("A", "B", "C")]
+        paths.append(_grouped_bar(fig_dir, name, title, metric, labels, series, ylim))
+    return paths
+
+
+def plot_model_comparison(rows: list[dict], fig_dir: str) -> list[str]:
+    """对比 Cnn1d / CnnGru / CnnLstm：按 (划分, 窗口, 输入) 分组。"""
+    group_by = ("split", "window_plan", "experiment")
+    keys = _config_keys(rows, group_by)
+    labels = [_label(k) for k in keys]
+    paths = []
+    for metric, name, title, ylim in (
+        ("window_accuracy", "model_comparison_classification.png", "模型对比：窗口级 Accuracy", (0, 1.05)),
+        ("window_macro_f1", "model_comparison_f1.png", "模型对比：窗口级 Macro-F1", (0, 1.05)),
+        ("window_mae_mil", "model_comparison_regression.png", "模型对比：窗口级直径 MAE", None),
+    ):
+        series = [(m, [_lookup(rows, ("model",) + group_by, (m,) + k, metric) for k in keys])
+                  for m in ("Cnn1d", "CnnGru", "CnnLstm")]
+        paths.append(_grouped_bar(fig_dir, name, title, metric, labels, series, ylim))
+    return paths
+
+
+def plot_overlap_comparison(rows: list[dict], fig_dir: str) -> list[str]:
+    """对比无重叠与 50% 重叠：按 (划分, 输入, 模型) 分组。"""
+    group_by = ("split", "experiment", "model")
+    keys = _config_keys(rows, group_by)
+    labels = [_label(k) for k in keys]
+    paths = []
+    for metric, name, title, ylim in (
+        ("window_accuracy", "overlap_comparison_accuracy.png", "重叠对比：窗口级 Accuracy", (0, 1.05)),
+        ("window_macro_f1", "overlap_comparison_f1.png", "重叠对比：窗口级 Macro-F1", (0, 1.05)),
+        ("window_mae_mil", "overlap_comparison_regression.png", "重叠对比：窗口级直径 MAE", None),
+    ):
+        series = [(plan, [_lookup(rows, ("window_plan",) + group_by, (plan,) + k, metric) for k in keys])
+                  for plan in ("no_overlap", "overlap50")]
+        paths.append(_grouped_bar(fig_dir, name, title, metric, labels, series, ylim))
+    return paths
+

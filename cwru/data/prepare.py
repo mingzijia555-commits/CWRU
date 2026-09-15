@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
-"""prepare 流水线：元数据、固定划分、实验清单与归一化参数。"""
+"""prepare 流水线：元数据、A/B/C 固定划分、实验清单与归一化参数。"""
 from __future__ import annotations
 
 import csv
-import json
 import os
 
-from cwru.config import ARTIFACTS_DIR, EXPERIMENTS, MANIFESTS_DIR, ensure_dirs
+from cwru.config import ARTIFACTS_DIR, EXPERIMENTS, SPLIT_SETS, WINDOW_PLAN_ORDER, ensure_dirs
 from cwru.data.audit import audit_all
-from cwru.data.dataset import build_experiment_arrays, save_experiment_manifest
-from cwru.data.split import build_split, save_splits
+from cwru.data.dataset import get_experiment_arrays, manifest_path, run_key
+from cwru.data.split import build_fixed_splits, save_splits, validate_splits
 
 
 def write_metadata_csv(records, path: str) -> None:
@@ -24,36 +23,45 @@ def write_metadata_csv(records, path: str) -> None:
 
 
 def run_prepare(verbose: bool = True) -> dict:
-    """生成元数据 CSV、两个固定划分、5 个实验清单（含归一化参数与类别权重）。"""
+    """生成元数据 CSV、A/B/C 固定划分、以及「划分集 × 窗口方案 × 输入方案」实验清单。"""
+    from cwru.config import SPLITS_DIR
     ensure_dirs()
     records = audit_all()
 
     meta_path = os.path.join(ARTIFACTS_DIR, "metadata.csv")
     write_metadata_csv(records, meta_path)
 
-    splits = build_split(records)
-    save_splits(splits)
+    mappings = build_fixed_splits(records)
+    save_splits(mappings, records, verbose=verbose)
+    report = validate_splits(mappings, records)
+    if not report["ok"]:
+        raise RuntimeError("固定划分校验失败：\n" + "\n".join(report["issues"]))
 
     summary = {}
-    for exp_id, exp_cfg in EXPERIMENTS.items():
-        split_of = splits[exp_cfg["files"]]
-        arrays = build_experiment_arrays(exp_id, exp_cfg, records, split_of)
-        manifest_path = save_experiment_manifest(exp_id, exp_cfg, arrays, split_of)
-        summary[exp_id] = {
-            "manifest": manifest_path,
-            "n_windows": int(len(arrays["y_cls"])),
-            "train_windows": int(sum(m["n_windows"] for m in arrays["files"] if m["split"] == "train")),
-            "val_windows": int(sum(m["n_windows"] for m in arrays["files"] if m["split"] == "val")),
-            "test_windows": int(sum(m["n_windows"] for m in arrays["files"] if m["split"] == "test")),
-            "class_weights": arrays["class_weights"],
-            "train_class_counts": arrays["train_class_counts"],
-            "norm": arrays["norm"],
-        }
-        if verbose:
-            print(f"[{exp_id}] 窗口总数={summary[exp_id]['n_windows']} "
-                  f"(train/val/test = {summary[exp_id]['train_windows']}/"
-                  f"{summary[exp_id]['val_windows']}/{summary[exp_id]['test_windows']})")
-            print(f"    类别窗口数(训练)={summary[exp_id]['train_class_counts']} "
-                  f"权重={[round(w, 3) for w in summary[exp_id]['class_weights']]}")
+    for split_name in SPLIT_SETS:
+        for plan in WINDOW_PLAN_ORDER:
+            for exp_id, exp_cfg in EXPERIMENTS.items():
+                split_of = mappings[split_name][exp_cfg["files"]]
+                key = run_key(split_name, exp_id, plan)
+                # 走 get_experiment_arrays：构建数组并写入窗口缓存与实验清单
+                arrays = get_experiment_arrays(split_name, exp_id, exp_cfg, records,
+                                               split_of, plan)
+                summary[key] = {
+                    "manifest": manifest_path(key),
+                    "n_windows": int(len(arrays["y_cls"])),
+                    "train_windows": int(sum(m["n_windows"] for m in arrays["files"]
+                                             if m["split"] == "train")),
+                    "val_windows": int(sum(m["n_windows"] for m in arrays["files"]
+                                           if m["split"] == "val")),
+                    "test_windows": int(sum(m["n_windows"] for m in arrays["files"]
+                                            if m["split"] == "test")),
+                    "class_weights": arrays["class_weights"],
+                    "train_class_counts": arrays["train_class_counts"],
+                    "norm": arrays["norm"],
+                }
+                if verbose:
+                    print(f"[{key}] 窗口总数={summary[key]['n_windows']} "
+                          f"(train/val/test = {summary[key]['train_windows']}/"
+                          f"{summary[key]['val_windows']}/{summary[key]['test_windows']})")
 
     return {"records": len(records), "experiments": summary}

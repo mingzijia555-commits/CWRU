@@ -31,11 +31,16 @@ def load_channel(record: FileRecord, role: str, base_dir: str = DATA_DIR) -> np.
 
 
 def make_windows(signal: np.ndarray, window_len: int, stride: int) -> np.ndarray:
-    """不重叠滑窗：形状 [n_windows, window_len]，尾部不足部分丢弃。"""
-    if stride != window_len:
-        raise NotImplementedError("本项目固定使用不重叠窗口 stride == window_len")
-    n = len(signal) // window_len
-    if n == 0:
+    """滑窗切片：形状 [n_windows, window_len]，尾部不足一个窗口的部分丢弃。
+
+    stride == window_len 为无重叠；stride = window_len // 2 为 50% 重叠。
+    重叠只发生在同一信号内部，跨集合的窗口隔离由文件级划分保证。
+    """
+    if stride <= 0 or stride > window_len:
+        raise ValueError(f"非法步长 stride={stride}（需 0 < stride <= window_len={window_len}）")
+    n = (len(signal) - window_len) // stride + 1
+    if n <= 0:
         raise ValueError(f"信号长度 {len(signal)} 不足一个窗口 {window_len}")
-    out = signal[: n * window_len].reshape(n, window_len)
+    starts = np.arange(n, dtype=np.int64) * stride
+    out = np.stack([signal[s: s + window_len] for s in starts])
     return out.astype(np.float32)

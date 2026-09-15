@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """实验数组构建、缓存与 Dataset。
 
-每个实验的数据布局在 prepare 阶段固化：
-- 窗口按文件清单切分（先划分文件，再切窗口）；
-- 归一化参数仅由该实验训练集窗口计算；
-- 数组缓存为 .npz（gitignore），训练/评估直接读取。
+每个「划分集 × 窗口方案 × 输入方案」组合的数据布局在 prepare 阶段固化：
+- 先按文件清单划分 train/val/test，再在各集合内部切窗口；
+- 窗口长度固定 1024，步长由窗口方案决定（无重叠 1024 / 50% 重叠 512）；
+- 归一化参数仅由该组合训练集窗口计算；
+- 数组缓存为 .npz（gitignore），键包含划分集与步长，避免方案之间误用。
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ import numpy as np
 import torch
 
 from cwru.config import (CACHE_DIR, CLASSES, MANIFESTS_DIR, REG_SCALE, SIGNAL_SR,
-                         STRIDE, WINDOW_LEN)
+                         WINDOW_LEN, WINDOW_PLANS)
 from cwru.data.audit import FileRecord
 from cwru.data.signals import load_channel, make_windows
 
@@ -34,16 +35,23 @@ def channel_roles_for(exp_cfg: dict, record: FileRecord) -> list[str]:
     raise ValueError(f"未知通道方案: {scheme}")
 
 
-def build_experiment_arrays(exp_id: str, exp_cfg: dict,
-                            records: list[FileRecord], split_of: dict[str, str]) -> dict:
+def run_key(split_name: str, exp_id: str, window_plan: str) -> str:
+    """缓存与清单的复合键：划分集 + 输入方案 + 窗口方案。"""
+    return f"{split_name}_{exp_id}_{window_plan}"
+
+
+def build_experiment_arrays(exp_id: str, exp_cfg: dict, records: list[FileRecord],
+                            split_of: dict[str, str],
+                            window_plan: str = "no_overlap") -> dict:
     """构建实验级窗口数组并计算归一化/类别权重。
 
     返回 dict(X, y_cls, y_reg, reg_mask, file_idx, files, norm, class_weights, counts)
     """
-    exp_cfg = dict(exp_cfg)
+    plan = WINDOW_PLANS[window_plan]
+    window_len, stride = plan["window_len"], plan["stride"]
     n_channels = 2 if exp_cfg["channels"] == "dual" else 1
 
-    xs: list[np.ndarray] = []          # 每文件 [n_win, n_channels, WINDOW_LEN]
+    xs: list[np.ndarray] = []
     ys_cls: list[np.ndarray] = []
     ys_reg: list[np.ndarray] = []
     masks: list[np.ndarray] = []
@@ -56,10 +64,11 @@ def build_experiment_arrays(exp_id: str, exp_cfg: dict,
     for fi, rec in enumerate(sorted(used, key=lambda r: r.filename)):
         roles = channel_roles_for(exp_cfg, rec)
         channels = [load_channel(rec, role) for role in roles]
-        n_win = min(len(c) for c in channels) // WINDOW_LEN
-        if n_win == 0:
+        n_win = min((len(c) - window_len) // stride + 1 for c in channels)
+        if n_win <= 0:
             raise ValueError(f"{rec.filename}: 信号过短，无法切窗")
-        chans = [make_windows(c[: n_win * WINDOW_LEN], WINDOW_LEN, STRIDE) for c in channels]
+        end = (n_win - 1) * stride + window_len
+        chans = [make_windows(c[:end], window_len, stride) for c in channels]
         x = np.stack(chans, axis=1)                       # [n_win, n_channels, 1024]
 
         cls_idx = CLASSES.index(rec.fault)
@@ -127,42 +136,66 @@ def build_experiment_arrays(exp_id: str, exp_cfg: dict,
         "class_weights": class_weights,
         "train_class_counts": counts,
         "sr": SIGNAL_SR,
-        "window_len": WINDOW_LEN,
-        "stride": STRIDE,
+        "window_len": window_len,
+        "stride": stride,
     }
 
 
-def cache_path(exp_id: str) -> str:
-    return os.path.join(CACHE_DIR, f"{exp_id}.npz")
+def cache_path(key: str) -> str:
+    return os.path.join(CACHE_DIR, f"{key}.npz")
 
 
-def get_experiment_arrays(exp_id: str, exp_cfg: dict,
-                          records: list[FileRecord], split_of: dict[str, str]) -> dict:
-    """优先读取缓存，否则构建并写缓存。"""
-    path = cache_path(exp_id)
-    if os.path.exists(path):
-        data = dict(np.load(path, allow_pickle=False))
-        with open(os.path.join(MANIFESTS_DIR, f"experiment_{exp_id}.json"), "r", encoding="utf-8") as f:
+def manifest_path(key: str) -> str:
+    return os.path.join(MANIFESTS_DIR, f"experiment_{key}.json")
+
+
+def get_experiment_arrays(split_name: str, exp_id: str, exp_cfg: dict,
+                          records: list[FileRecord], split_of: dict[str, str],
+                          window_plan: str = "no_overlap") -> dict:
+    """优先读取缓存，否则构建并写缓存。键包含划分集与窗口方案。"""
+    key = run_key(split_name, exp_id, window_plan)
+    path = cache_path(key)
+    mpath = manifest_path(key)
+    if os.path.exists(path) and os.path.exists(mpath):
+        with open(mpath, "r", encoding="utf-8") as f:
             meta = json.load(f)
-        data["files"] = meta["files"]
-        data["norm"] = meta["norm"]
-        data["class_weights"] = np.asarray(meta["class_weights"], dtype=np.float32)
-        data["train_class_counts"] = meta["train_class_counts"]
-        return data
+        plan = WINDOW_PLANS[window_plan]
+        cache_matches = (
+            meta.get("split_set") == split_name
+            and meta.get("experiment") == exp_id
+            and meta.get("window_plan") == window_plan
+            and meta.get("config") == exp_cfg
+            and meta.get("split") == split_of
+            and meta.get("window_len") == plan["window_len"]
+            and meta.get("stride") == plan["stride"]
+        )
+        if cache_matches:
+            data = dict(np.load(path, allow_pickle=False))
+            data["files"] = meta["files"]
+            data["norm"] = meta["norm"]
+            data["class_weights"] = np.asarray(meta["class_weights"], dtype=np.float32)
+            data["train_class_counts"] = meta["train_class_counts"]
+            data["window_len"] = meta["window_len"]
+            data["stride"] = meta["stride"]
+            return data
 
-    arrays = build_experiment_arrays(exp_id, exp_cfg, records, split_of)
+    arrays = build_experiment_arrays(exp_id, exp_cfg, records, split_of, window_plan)
     np.savez_compressed(
         path,
         X=arrays["X"], y_cls=arrays["y_cls"], y_reg=arrays["y_reg"],
         reg_mask=arrays["reg_mask"], file_idx=arrays["file_idx"],
     )
+    save_experiment_manifest(key, split_name, exp_id, exp_cfg, window_plan, arrays, split_of)
     return arrays
 
 
-def save_experiment_manifest(exp_id: str, exp_cfg: dict, arrays: dict,
-                             split_of: dict[str, str]) -> str:
+def save_experiment_manifest(key: str, split_name: str, exp_id: str, exp_cfg: dict,
+                             window_plan: str, arrays: dict, split_of: dict[str, str]) -> str:
     manifest = {
+        "key": key,
+        "split_set": split_name,
         "experiment": exp_id,
+        "window_plan": window_plan,
         "config": exp_cfg,
         "files": arrays["files"],
         "norm": arrays["norm"],
@@ -171,10 +204,11 @@ def save_experiment_manifest(exp_id: str, exp_cfg: dict, arrays: dict,
         "sr": arrays["sr"],
         "window_len": arrays["window_len"],
         "stride": arrays["stride"],
-        "split_file": f"split_{exp_cfg['files']}.json",
+        "split_file": f"splits/{split_name}/split_{exp_cfg['files']}.json",
         "split": split_of,
     }
-    path = os.path.join(MANIFESTS_DIR, f"experiment_{exp_id}.json")
+    path = manifest_path(key)
+    os.makedirs(MANIFESTS_DIR, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
     return path

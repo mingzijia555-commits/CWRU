@@ -69,9 +69,13 @@ def regression_errors(y_reg_true: np.ndarray, y_reg_pred: np.ndarray) -> dict:
 
 
 def file_level_predictions(y_cls: np.ndarray, probs: np.ndarray, y_reg: np.ndarray,
-                           reg_mask: np.ndarray, file_idx: np.ndarray,
-                           files: list[dict]) -> dict:
-    """按文件聚合窗口预测：类别取平均概率最大者，直径取窗口均值。"""
+                           y_reg_pred: np.ndarray, reg_mask: np.ndarray,
+                           file_idx: np.ndarray, files: list[dict]) -> dict:
+    """按文件聚合窗口预测：类别取平均概率最大者，直径取模型窗口预测均值。
+
+    文件级连续直径 = 该文件全部故障窗口的模型直径预测算术平均（缩放单位 × REG_SCALE）；
+    Normal 文件无故障窗口，直径记 0，且不参与故障直径 MAE/RMSE。
+    """
     by_file = defaultdict(lambda: {"idx": []})
     for i, fi in enumerate(file_idx):
         by_file[int(fi)]["idx"].append(i)
@@ -87,7 +91,10 @@ def file_level_predictions(y_cls: np.ndarray, probs: np.ndarray, y_reg: np.ndarr
         fault = meta["fault"]
         true_cls = {"Normal": 0, "IR": 1, "OR": 2, "B": 3}[fault]
         fault_windows = reg_mask[idx]
-        pred_dia = float(y_reg[idx][fault_windows].mean()) * REG_SCALE if fault_windows.any() else 0.0
+        if fault_windows.any():
+            pred_dia = float(y_reg_pred[idx][fault_windows].mean()) * REG_SCALE
+        else:
+            pred_dia = 0.0
         rows.append({
             "filename": meta["filename"], "split": meta["split"],
             "end": meta["end"], "fault": fault, "diameter_mil": meta["diameter_mil"],
@@ -114,7 +121,7 @@ def summarize_window_metrics(y_cls: np.ndarray, y_pred: np.ndarray, probs: np.nd
     return out
 
 
-def or_clock_breakdown(files_rows: list[dict], y_cls: np.ndarray, y_pred: np.ndarray,
+def or_clock_breakdown(y_cls: np.ndarray, y_pred: np.ndarray,
                        y_reg: np.ndarray, y_reg_pred: np.ndarray, reg_mask: np.ndarray,
                        file_idx: np.ndarray, files: list[dict]) -> dict:
     """外圈 3/6/12 点钟位置的窗口级细分表现。"""

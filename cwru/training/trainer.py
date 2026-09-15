@@ -20,7 +20,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from cwru.config import (BATCH_SIZE, ES_PATIENCE, LR, LR_FACTOR, LR_PATIENCE,
-                         MAX_EPOCHS, RUNS_DIR, SEED, WEIGHT_DECAY)
+                         MAX_EPOCHS, RUNS_DIR, SEED, TRAIN_SEED, WEIGHT_DECAY)
 from cwru.data.dataset import CwruDataset
 from cwru.models.models import build_model
 
@@ -44,12 +44,25 @@ def total_loss_from(outputs: dict, y_cls: torch.Tensor, y_reg: torch.Tensor,
     return cls_loss + reg_loss, cls_loss, reg_loss
 
 
+def macro_f1_np(y_true: np.ndarray, y_pred: np.ndarray, n_classes: int = 4) -> float:
+    """不依赖 sklearn 的四分类 Macro-F1。"""
+    f1s = []
+    for c in range(n_classes):
+        tp = int(((y_true == c) & (y_pred == c)).sum())
+        fp = int(((y_true != c) & (y_pred == c)).sum())
+        fn = int(((y_true == c) & (y_pred != c)).sum())
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1s.append(2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0)
+    return float(np.mean(f1s))
+
+
 @torch.no_grad()
 def _evaluate_val(model, loader, class_weights, device) -> dict:
     model.eval()
     totals = {"loss": 0.0, "cls": 0.0, "reg": 0.0}
     n_all, n_reg = 0, 0
-    correct, n = 0, 0
+    y_true_all, y_pred_all = [], []
     abs_err, sq_err = [], []
     for x, y_cls, y_reg, mask in loader:
         x, y_cls = x.to(device), y_cls.to(device)
@@ -63,33 +76,41 @@ def _evaluate_val(model, loader, class_weights, device) -> dict:
         n_all += bs
         n_reg += int(mask.sum())
         pred = out["logits"].argmax(dim=1)
-        correct += int((pred == y_cls).sum())
-        n += bs
+        y_true_all.append(y_cls.cpu().numpy())
+        y_pred_all.append(pred.cpu().numpy())
         if mask.any():
             err = out["diameter"][mask] - y_reg[mask]
             abs_err.append(err.abs().cpu().numpy())
             sq_err.append((err ** 2).cpu().numpy())
     mae = float(np.concatenate(abs_err).mean()) if abs_err else float("nan")
     rmse = float(np.sqrt(np.concatenate(sq_err).mean())) if sq_err else float("nan")
+    y_true = np.concatenate(y_true_all)
+    y_pred = np.concatenate(y_pred_all)
     return {
         "val_loss": totals["loss"] / n_all,
         "val_cls_loss": totals["cls"] / n_all,
         "val_reg_loss": totals["reg"] / n_all,
-        "val_acc": correct / n,
+        "val_acc": float((y_true == y_pred).mean()),
+        "val_f1": macro_f1_np(y_true, y_pred),
         "val_mae": mae,
         "val_rmse": rmse,
     }
 
 
-def run_dir(experiment: str, model_name: str) -> str:
+def default_run_dir(experiment: str, model_name: str) -> str:
+    """旧版默认输出路径（artifacts/runs/<exp>/<model>），仅用于兼容调用。"""
     return os.path.join(RUNS_DIR, experiment, model_name)
 
 
 def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
-                epochs: int = MAX_EPOCHS, resume: bool = False,
-                seed: int = SEED, verbose: bool = True) -> str:
-    """训练指定实验与模型，返回运行目录。"""
-    out_dir = run_dir(experiment, model_name)
+                out_dir: str | None = None, epochs: int = MAX_EPOCHS, resume: bool = False,
+                seed: int = TRAIN_SEED, verbose: bool = True,
+                split_name: str = "", window_plan: str = "") -> str:
+    """训练指定实验与模型，返回运行目录。
+
+    out_dir 为空时退回旧默认路径 artifacts/runs/<experiment>/<model>。
+    """
+    out_dir = out_dir or default_run_dir(experiment, model_name)
     os.makedirs(out_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -111,6 +132,10 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
         optimizer, mode="min", factor=LR_FACTOR, patience=LR_PATIENCE)
 
     config = {
+        "split_set": split_name,
+        "window_plan": window_plan,
+        "window_len": int(arrays.get("window_len", 1024)),
+        "stride": int(arrays.get("stride", 1024)),
         "experiment": experiment,
         "display": exp_cfg.get("display", ""),
         "model": model_name,
@@ -156,6 +181,7 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
 
     no_improve = 0
     t0 = time.time()
+    epoch = start_epoch
     for epoch in range(start_epoch, epochs + 1):
         model.train()
         totals = {"loss": 0.0, "cls": 0.0, "reg": 0.0}
@@ -192,6 +218,8 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
             best_val_loss = val_metrics["val_loss"]
             no_improve = 0
             torch.save({
+                "split_set": split_name,
+                "window_plan": window_plan,
                 "experiment": experiment,
                 "model": model_name,
                 "in_channels": in_channels,
@@ -204,6 +232,8 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
             no_improve += 1
 
         torch.save({
+            "split_set": split_name,
+            "window_plan": window_plan,
             "experiment": experiment,
             "model": model_name,
             "epoch": epoch,
