@@ -10,7 +10,7 @@
 
 - Python 3.11（conda 环境 `AI2026Summer`）
 - torch 2.11.0+cu128（CUDA 可用即可，CPU 也能运行但更慢）
-- scipy / numpy / matplotlib / pandas
+- scipy / numpy / matplotlib
 
 ```bash
 pip install -r requirements.txt
@@ -118,12 +118,13 @@ artifacts/
 ├── metadata.csv                # 109 个文件的完整审计表
 ├── manifests/                  # 30 个实验清单（键 = 划分_输入_窗口）
 ├── runs/                       # 单组命令的兼容输出
-└── full_runs/formal_run/        # 完整批次固定目录；再次完整运行会覆盖同名结果
+├── tmp_check/full_run/          # --epochs 或 --limit 验证运行，和正式结果隔离
+└── full_runs/formal_run/        # 完整批次固定目录；运行前清空旧内容
     ├── README.md               # 逐组更新进度与结果，含 A/B/C 均值标准差与结论
     ├── run_config.json
     ├── splits/                 # 本批次使用的三套划分快照
     ├── <A|B|C>/<窗口>/<输入>/<模型>/
-    │   ├── best_inference.pt / last_training.ckpt
+    │   ├── best_inference.pt
     │   ├── history.json / metrics.json / files.csv
     │   └── figures/
     └── comparisons/            # metrics_all.csv、mean_std_summary.csv、对比图、conclusions.json

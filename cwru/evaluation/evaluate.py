@@ -15,8 +15,7 @@ import os
 import numpy as np
 import torch
 
-from cwru.config import CLASSES, MODELS, WINDOW_PLANS
-from cwru.data.dataset import get_experiment_arrays
+from cwru.config import CLASSES, WINDOW_PLANS
 from cwru.evaluation import plots
 from cwru.evaluation.metrics import (confusion_matrix_np, file_level_predictions,
                                      macro_f1_from, mil28_breakdown, or_clock_breakdown,
@@ -49,7 +48,11 @@ def load_best_model(ckpt_dir: str, model_name: str, in_channels: int,
     if not os.path.exists(best_path):
         raise FileNotFoundError(
             f"未找到推理权重：{best_path}\n请检查划分集/窗口方案/输入方案/模型是否与实际训练一致")
-    ckpt = torch.load(best_path, map_location=device, weights_only=False)
+    # 旧实验的 config 中包含 NumPy 数组，只对白名单中的数组类型开放反序列化。
+    numpy_types = [np.ndarray, np._core.multiarray._reconstruct,
+                   np.dtype, np.dtypes.Float32DType]
+    with torch.serialization.safe_globals(numpy_types):
+        ckpt = torch.load(best_path, map_location=device, weights_only=True)
     model = build_model(model_name, in_channels).to(device)
     try:
         model.load_state_dict(ckpt["model_state"])
@@ -208,40 +211,3 @@ def evaluate_run(out_dir: str, experiment: str, exp_cfg: dict, model_name: str,
         "files_csv": csv_path,
         "figures_dir": fig_dir,
     }
-
-
-def evaluate_matrix(split_name: str, records, split_of: dict[str, dict[str, str]],
-                    verbose: bool = True,
-                    batch_dir: str | None = None, only_plan: str | None = None,
-                    only_experiment: str | None = None, only_model: str | None = None,
-                    on_result=None) -> list[dict]:
-    """按 (窗口方案 × 输入方案 × 模型) 评估某一套划分的全部组合。
-
-    split_of 必须同时提供 ``{"101": mapping, "109": mapping}``，因为不同输入
-    方案使用不同文件集合；不能用一份映射覆盖两类实验。
-
-    batch_dir 给出时写入该批次；为空则写 artifacts/runs 下的兼容目录。
-    on_result 回调用于逐组更新 README。
-    """
-    from cwru.config import EXPERIMENT_ORDER, EXPERIMENTS, RUNS_DIR
-
-    plans = [only_plan] if only_plan else list(WINDOW_PLANS)
-    exps = [only_experiment] if only_experiment else EXPERIMENT_ORDER
-    models = [only_model] if only_model else MODELS
-
-    results = []
-    for plan in plans:
-        for exp in exps:
-            exp_cfg = EXPERIMENTS[exp]
-            arrays = get_experiment_arrays(split_name, exp, exp_cfg, records,
-                                           split_of[exp_cfg["files"]], plan)
-            for model in models:
-                out_dir = (os.path.join(batch_dir, split_name, plan, exp, model)
-                           if batch_dir else os.path.join(RUNS_DIR,
-                                                          f"{split_name}_{plan}_{exp}_{model}"))
-                res = evaluate_run(out_dir, exp, exp_cfg, model, arrays,
-                                   split_name=split_name, window_plan=plan, verbose=verbose)
-                results.append(res)
-                if on_result:
-                    on_result(res)
-    return results

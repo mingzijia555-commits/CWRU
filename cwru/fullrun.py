@@ -44,11 +44,12 @@ def run_full(epochs: int | None = None, verbose: bool = True,
     if splits_only:
         return None
 
-    ctx = BatchContext.create(mappings, records)
-    print(f"[batch] 正式结果目录：{ctx.batch_dir}")
+    is_check = epochs is not None or limit is not None
+    ctx = BatchContext.create(mappings, records, plan="check" if is_check else "full")
+    print(f"[batch] {'验证' if is_check else '正式'}结果目录：{ctx.batch_dir}")
 
     total = len(SPLIT_SETS) * len(WINDOW_PLAN_ORDER) * len(EXPERIMENT_ORDER) * len(MODELS)
-    done, failed = 0, 0
+    done = 0
     hit_limit = False
     t0 = time.time()
 
@@ -69,19 +70,14 @@ def run_full(epochs: int | None = None, verbose: bool = True,
                     tag = f"{split_name}/{plan}/{exp}/{model}"
                     print(f"\n=== [{done}/{total}] {tag} ===")
                     out_dir = ctx.run_dir(split_name, plan, exp, model)
-                    try:
-                        train_model(exp, exp_cfg, arrays, model, out_dir=out_dir,
-                                    epochs=epochs if epochs is not None else MAX_EPOCHS,
-                                    seed=TRAIN_SEED, verbose=verbose,
-                                    split_name=split_name, window_plan=plan)
-                        res = evaluate_run(out_dir, exp, exp_cfg, model, arrays,
-                                           split_name=split_name, window_plan=plan,
-                                           verbose=verbose)
-                        ctx.record_result(res)
-                    except Exception as exc:  # 单组失败不中断整批
-                        failed += 1
-                        print(f"[batch] {tag} 失败：{exc}")
-                        ctx.record_failure(split_name, plan, exp, model, repr(exc))
+                    train_model(exp, exp_cfg, arrays, model, out_dir=out_dir,
+                                epochs=epochs if epochs is not None else MAX_EPOCHS,
+                                seed=TRAIN_SEED, verbose=verbose,
+                                split_name=split_name, window_plan=plan)
+                    res = evaluate_run(out_dir, exp, exp_cfg, model, arrays,
+                                       split_name=split_name, window_plan=plan,
+                                       verbose=verbose)
+                    ctx.record_result(res)
                 if hit_limit:
                     break
             if hit_limit:
@@ -95,10 +91,10 @@ def run_full(epochs: int | None = None, verbose: bool = True,
         print(f"[batch] 达到 limit={limit}，提前结束")
         ctx.set_message(note)
 
-    print(f"\n[batch] 训练与评估完成：成功 {len(ctx.results)} 组，失败 {failed} 组，"
+    print(f"\n[batch] 训练与评估完成：{len(ctx.results)} 组，"
           f"用时 {time.time() - t0:.0f}s")
 
-    if ctx.results:
+    if len(ctx.results) == total:
         summary = compare_mod.run_compare(ctx.batch_dir, verbose=verbose)
         ctx.finish(conclusions=summary)
     else:

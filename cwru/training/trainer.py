@@ -8,19 +8,17 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import random
 import time
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from cwru.config import (BATCH_SIZE, ES_PATIENCE, LR, LR_FACTOR, LR_PATIENCE,
-                         MAX_EPOCHS, RUNS_DIR, SEED, TRAIN_SEED, WEIGHT_DECAY)
+                         MAX_EPOCHS, SEED, TRAIN_SEED, WEIGHT_DECAY)
 from cwru.data.dataset import CwruDataset
 from cwru.models.models import build_model
 
@@ -97,20 +95,11 @@ def _evaluate_val(model, loader, class_weights, device) -> dict:
     }
 
 
-def default_run_dir(experiment: str, model_name: str) -> str:
-    """旧版默认输出路径（artifacts/runs/<exp>/<model>），仅用于兼容调用。"""
-    return os.path.join(RUNS_DIR, experiment, model_name)
-
-
 def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
-                out_dir: str | None = None, epochs: int = MAX_EPOCHS, resume: bool = False,
+                out_dir: str, epochs: int = MAX_EPOCHS,
                 seed: int = TRAIN_SEED, verbose: bool = True,
                 split_name: str = "", window_plan: str = "") -> str:
-    """训练指定实验与模型，返回运行目录。
-
-    out_dir 为空时退回旧默认路径 artifacts/runs/<experiment>/<model>。
-    """
-    out_dir = out_dir or default_run_dir(experiment, model_name)
+    """训练指定实验与模型，返回运行目录。"""
     os.makedirs(out_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -157,23 +146,9 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
     }
 
     history = []
-    start_epoch = 1
-    best_val_loss = math.inf
-    ckpt_path = os.path.join(out_dir, "last_training.ckpt")
+    best_val_loss = float("inf")
     best_path = os.path.join(out_dir, "best_inference.pt")
     history_path = os.path.join(out_dir, "history.json")
-
-    if resume and os.path.exists(ckpt_path):
-        ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
-        model.load_state_dict(ckpt["model_state"])
-        optimizer.load_state_dict(ckpt["optimizer_state"])
-        scheduler.load_state_dict(ckpt["scheduler_state"])
-        start_epoch = ckpt["epoch"] + 1
-        best_val_loss = ckpt["best_val_loss"]
-        history = ckpt.get("history", [])
-        if verbose:
-            print(f"[{experiment}/{model_name}] 从 epoch {ckpt['epoch']} 恢复，"
-                  f"最佳 val_loss={best_val_loss:.4f}")
 
     if verbose:
         print(f"[{experiment}/{model_name}] 训练开始: train={len(train_ds)} val={len(val_ds)} "
@@ -181,8 +156,7 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
 
     no_improve = 0
     t0 = time.time()
-    epoch = start_epoch
-    for epoch in range(start_epoch, epochs + 1):
+    for epoch in range(1, epochs + 1):
         model.train()
         totals = {"loss": 0.0, "cls": 0.0, "reg": 0.0}
         n_all = 0
@@ -231,19 +205,6 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
         else:
             no_improve += 1
 
-        torch.save({
-            "split_set": split_name,
-            "window_plan": window_plan,
-            "experiment": experiment,
-            "model": model_name,
-            "epoch": epoch,
-            "best_val_loss": best_val_loss,
-            "model_state": model.state_dict(),
-            "optimizer_state": optimizer.state_dict(),
-            "scheduler_state": scheduler.state_dict(),
-            "history": history,
-            "config": config,
-        }, ckpt_path)
         with open(history_path, "w", encoding="utf-8") as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
 

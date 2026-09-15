@@ -201,16 +201,3 @@ class CwruDataset:
     def __getitem__(self, i: int):
         return (torch.from_numpy(self.X[i]), int(self.y_cls[i]),
                 float(self.y_reg[i]), bool(self.reg_mask[i]))
-
-
-def subset_arrays(arrays: dict, split: str) -> dict:
-    """按划分名抽取子数组（评估/指标计算使用）。"""
-    file_split = np.array([m["split"] for m in arrays["files"]])
-    sel = np.isin(arrays["file_idx"], np.where(file_split == split)[0])
-    return {
-        "X": arrays["X"][sel],
-        "y_cls": arrays["y_cls"][sel],
-        "y_reg": arrays["y_reg"][sel],
-        "reg_mask": arrays["reg_mask"][sel],
-        "file_idx": arrays["file_idx"][sel],
-    }

@@ -60,7 +60,7 @@ def cmd_train(args) -> None:
     out_dir = args.out_dir or _default_run_dir(args.split, args.window,
                                                 args.experiment, args.model)
     train_model(args.experiment, exp_cfg, arrays, args.model, out_dir=out_dir,
-                resume=args.resume, split_name=args.split, window_plan=args.window)
+                split_name=args.split, window_plan=args.window)
 
 
 def cmd_full_run(args) -> None:
@@ -69,7 +69,8 @@ def cmd_full_run(args) -> None:
     if ctx is None:
         print("\n已完成固定划分生成（未训练）")
         return
-    print(f"\n完整批次完成：{ctx.batch_dir}")
+    label = "验证运行" if ctx.plan == "check" else "完整批次"
+    print(f"\n{label}完成：{ctx.batch_dir}")
 
 
 def cmd_evaluate(args) -> None:
@@ -115,10 +116,9 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--split", default="A", choices=SPLIT_SETS)
     c.add_argument("--window", default="no_overlap", choices=WINDOW_PLAN_ORDER)
     c.add_argument("--out-dir", default=None, help="输出目录（默认为 artifacts/runs/<key>）")
-    c.add_argument("--resume", action="store_true", help="从 last_training.ckpt 断点续训")
     c.set_defaults(func=cmd_train)
 
-    d = sub.add_parser("full-run", help="新建批次并执行完整 90 组正式实验")
+    d = sub.add_parser("full-run", help="执行完整 90 组正式实验")
     d.add_argument("--epochs", type=int, default=None, help="覆盖最大 epoch（默认 80）")
     d.add_argument("--limit", type=int, default=None, help="仅执行前 N 组（流程验证用）")
     d.set_defaults(func=cmd_full_run)

@@ -43,7 +43,7 @@ def run_prepare(verbose: bool = True) -> dict:
             for exp_id, exp_cfg in EXPERIMENTS.items():
                 split_of = mappings[split_name][exp_cfg["files"]]
                 key = run_key(split_name, exp_id, plan)
-                # 走 get_experiment_arrays：构建数组并写入窗口缓存与实验清单
+                # 构建内存数组，并保存归一化参数等实验清单
                 arrays = get_experiment_arrays(split_name, exp_id, exp_cfg, records,
                                                split_of, plan)
                 summary[key] = {

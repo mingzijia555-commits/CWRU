@@ -12,6 +12,7 @@ RUNS_DIR = os.path.join(ARTIFACTS_DIR, "runs")
 METRICS_DIR = os.path.join(ARTIFACTS_DIR, "metrics")
 FIGURES_DIR = os.path.join(ARTIFACTS_DIR, "figures")
 FULL_RUNS_DIR = os.path.join(ARTIFACTS_DIR, "full_runs")
+TMP_CHECK_DIR = os.path.join(ARTIFACTS_DIR, "tmp_check")
 SPLITS_DIR = os.path.join(PROJECT_ROOT, "splits")
 
 # 信号与窗口

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """批次上下文：正式结果目录、run_config、划分快照与逐组更新的 README。
 
-完整运行统一写入 artifacts/full_runs/formal_run/。再次运行会覆盖同名结果，
-因此只在确实需要重新生成全部实验时使用。
+完整运行统一写入 artifacts/full_runs/formal_run/，小规模验证写入
+artifacts/tmp_check/full_run/。开始运行前会清空对应目录，避免混入旧结果。
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import subprocess
 from cwru.config import (BATCH_SIZE, ES_PATIENCE, EXPERIMENTS, EXPERIMENT_ORDER,
                          FULL_RUNS_DIR, LR, LR_FACTOR, LR_PATIENCE, MAX_EPOCHS,
                          MODELS, N_FORMAL_RUNS, PROJECT_ROOT, SPLIT_SETS,
-                         SPLITS_DIR, TRAIN_SEED, WEIGHT_DECAY, WINDOW_PLANS,
+                         SPLITS_DIR, TMP_CHECK_DIR, TRAIN_SEED, WEIGHT_DECAY, WINDOW_PLANS,
                          WINDOW_PLAN_ORDER)
 
 
@@ -41,15 +41,17 @@ class BatchContext:
         self.started_at = _dt.datetime.now().isoformat(timespec="seconds")
         self.ended_at: str | None = None
         self.results: list[dict] = []
-        self.failures: list[dict] = []
         self.conclusions: dict | None = None
         self.message: str = ""
 
     # ---------- 创建 ----------
     @classmethod
     def create(cls, split_mappings: dict, records, plan: str = "full") -> "BatchContext":
-        batch_dir = os.path.join(FULL_RUNS_DIR, "formal_run")
-        os.makedirs(batch_dir, exist_ok=True)
+        batch_dir = (os.path.join(TMP_CHECK_DIR, "full_run") if plan == "check"
+                     else os.path.join(FULL_RUNS_DIR, "formal_run"))
+        if os.path.isdir(batch_dir):
+            shutil.rmtree(batch_dir)
+        os.makedirs(batch_dir)
         ctx = cls(batch_dir, split_mappings, records, plan=plan)
         ctx.snapshot_splits()
         ctx.write_run_config()
@@ -111,12 +113,6 @@ class BatchContext:
         self.results.append(res)
         self.write_readme()
 
-    def record_failure(self, split_name: str, window_plan: str, exp: str, model: str,
-                       error: str) -> None:
-        self.failures.append({"split": split_name, "window_plan": window_plan,
-                              "experiment": exp, "model": model, "error": error})
-        self.write_readme()
-
     def set_message(self, text: str) -> None:
         self.message = text
         self.write_readme()
@@ -144,7 +140,7 @@ class BatchContext:
             f"- 原始数据文件数：{cfg['n_data_files']} 个 MAT（101 公共集合 + B028/IR028）",
             "- 文件划分：代码内固定文件名单 `fixed_file_lists_v1`（无随机生成）",
             f"- 训练种子 TRAIN_SEED = {TRAIN_SEED}（90 组统一）",
-            f"- 预计实验数：{N_FORMAL_RUNS}，已完成：{len(self.results)}，失败：{len(self.failures)}",
+            f"- 预计实验数：{N_FORMAL_RUNS}，已完成：{len(self.results)}",
             "",
             "## 实验矩阵",
             "",
@@ -197,12 +193,6 @@ class BatchContext:
         if self.conclusions:
             lines += self._conclusion_lines(self.conclusions)
 
-        if self.failures:
-            lines += ["", "## 失败或中断", ""]
-            for f in self.failures:
-                lines.append(f"- {f['split']}/{f['window_plan']}/{f['experiment']}/{f['model']}："
-                             f"{f['error']}")
-
         if self.message:
             lines += ["", "## 备注", "", self.message]
 
@@ -212,7 +202,6 @@ class BatchContext:
             "",
             "- 单组实验：`<划分>/<窗口方案>/<输入方案>/<模型>/`",
             "  - `best_inference.pt`：验证总损失最佳时的推理权重",
-            "  - `last_training.ckpt`：训练结束的完整检查点（训练记录，不用于跨批次恢复）",
             "  - `history.json`：逐 epoch 训练/验证曲线数据",
             "  - `metrics.json`：本组汇总指标（不含逐文件明细）",
             "  - `files.csv`：测试集逐文件真实值、预测值与属性",

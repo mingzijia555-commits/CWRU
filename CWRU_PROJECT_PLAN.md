@@ -105,7 +105,6 @@
 - 固定种子 42，不使用数据增强。
 - 每次训练保存：
   - `best_inference.pt`
-  - `last_training.ckpt`
   - 训练历史和完整配置
 
 ## 终端接口
@@ -115,7 +114,7 @@
 - `audit-data`：检查文件、采样率、变量和特殊映射
 - `prepare`：生成元数据、划分和归一化参数
 - `train`：训练指定实验和模型
-- `run-all --resume`：依次完成或恢复全部 10 次训练
+- `full-run`：依次完成全部正式实验
 - `evaluate`：生成完整测试指标和图表
 - `compare`：汇总比较 10 组实验
 - `predict`：加载权重并对指定 MAT 文件推理
@@ -147,7 +146,7 @@
 
 ## 测试与验收
 
-自动测试覆盖：
+人工复核内容：
 
 - 109/101 文件识别和特殊变量映射
 - Normal 48→12 kHz 抗混叠降采样
@@ -157,12 +156,11 @@
 - Normal 回归掩码
 - 两种模型前向、反向、保存和加载
 - 最佳权重推理
-- 最后检查点断点续训
 - 小规模端到端训练、评估和绘图
 
 最终验收条件：
 
-- `run-all --resume` 可以完成或恢复全部 10 次训练。
+- `full-run` 可以完成全部正式实验。
 - 20 个模型文件均能正常加载。
 - 任意测试 MAT 文件都能通过终端完成推理。
 - 所有指标、CSV 和报告用图片均能自动重新生成。
@@ -171,7 +169,7 @@
 ## 已确认的执行环境（2026-09-15 勘察结果）
 
 - 使用 conda 环境 `AI2026Summer`：`D:\Softwares\Miniconda\envs\AI2026Summer\python.exe`（Python 3.11.15）。系统默认 `python` 是 3.14 且未装 torch，禁止使用。
-- torch 2.11.0+cu128，CUDA 可用（RTX 5070 Laptop 8GB）；scipy 1.16.0、numpy 2.3.1、matplotlib 3.11.0、pandas 3.0.5 均已就绪。
+- torch 2.11.0+cu128，CUDA 可用（RTX 5070 Laptop 8GB）；scipy 1.16.0、numpy 2.3.1、matplotlib 3.11.0 均已就绪。
 - `gh` CLI 已登录 `mingzijia555-commits`，token 含 `repo` 权限，可直接创建私有仓库。
 - 109 个 MAT 文件的完整性和正确性已由用户人工确认，特殊变量映射抽查与计划一致（`normal_2_99.mat` 内含 X098/X099 两组变量、`12k_Fan_End_IR014_1_276.mat` 内含 X275、8 个 28 mil 文件仅有随机命名的 DE 通道）；执行时无需再做全量数据审计。
 
