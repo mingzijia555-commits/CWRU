@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# 训练缓存（窗口数组，可由 prepare 重建）
+artifacts/cache/
+
+# 系统与临时文件
+~$*
+*.tmp
+Thumbs.db
+.DS_Store
+
+# 临时脚本
+probe_data.py
