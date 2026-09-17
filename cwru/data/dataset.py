@@ -151,5 +151,8 @@ class CwruDataset:
         return len(self.y_cls)
 
     def __getitem__(self, i: int):
+        # 明确指定回归标签为 float32，避免 DataLoader 将 Python float
+        # 默认拼接成 float64，进而与模型的 float32 输出发生 dtype 冲突。
         return (torch.from_numpy(self.X[i]), int(self.y_cls[i]),
-                float(self.y_reg[i]), bool(self.reg_mask[i]))
+                torch.tensor(self.y_reg[i], dtype=torch.float32),
+                bool(self.reg_mask[i]))
