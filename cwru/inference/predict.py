@@ -2,15 +2,13 @@
 """predict：加载最佳权重，对指定 MAT 文件做终端推理（支持划分集与窗口方案）。"""
 from __future__ import annotations
 
-import json
 import os
 
 import numpy as np
 import torch
 
-from cwru.config import CLASSES, EXPERIMENTS, WINDOW_PLANS
+from cwru.config import ARTIFACTS_DIR, CLASSES, EXPERIMENTS, WINDOW_PLANS
 from cwru.data.audit import load_record
-from cwru.data.dataset import manifest_path, run_key
 from cwru.data.signals import load_channel, make_windows
 from cwru.evaluation.evaluate import load_best_model
 
@@ -29,19 +27,11 @@ def resolve_channels(exp_cfg: dict, record, channel_arg: str | None) -> list[str
 
 def resolve_ckpt_dir(experiment: str, model: str, split_name: str, window_plan: str,
                      ckpt_dir: str | None) -> str:
-    """定位权重目录：优先显式指定，其次最新批次，最后 artifacts/runs 兼容路径。"""
+    """定位最终结果目录中的模型权重。"""
     if ckpt_dir:
         return ckpt_dir
-    from cwru.config import FULL_RUNS_DIR, RUNS_DIR
-    if os.path.isdir(FULL_RUNS_DIR):
-        batches = sorted(d for d in os.listdir(FULL_RUNS_DIR)
-                         if os.path.isdir(os.path.join(FULL_RUNS_DIR, d))
-                         and not d.startswith("legacy"))
-        for b in reversed(batches):
-            cand = os.path.join(FULL_RUNS_DIR, b, split_name, window_plan, experiment, model)
-            if os.path.exists(os.path.join(cand, "best_inference.pt")):
-                return cand
-    return os.path.join(RUNS_DIR, f"{split_name}_{window_plan}_{experiment}_{model}")
+    return os.path.join(ARTIFACTS_DIR, "final_results", split_name,
+                        window_plan, experiment, model)
 
 
 def predict_file(experiment: str, model_name: str, mat_path: str,
@@ -61,19 +51,14 @@ def predict_file(experiment: str, model_name: str, mat_path: str,
     chans = [make_windows(c[:end], window_len, stride) for c in channels]
     X = np.stack(chans, axis=1).astype(np.float32)  # [n, C, W]
 
-    # 用训练期归一化参数（从实验清单读取，键含划分集与窗口方案）
-    key = run_key(split_name, experiment, window_plan)
-    mpath = manifest_path(key)
-    if not os.path.exists(mpath):
-        raise FileNotFoundError(f"缺少实验清单 {mpath}，请先运行 prepare 或对应批次训练")
-    with open(mpath, "r", encoding="utf-8") as f:
-        manifest = json.load(f)
-    mean = np.array([n["mean"] for n in manifest["norm"]], dtype=np.float32)[None, :, None]
-    std = np.array([n["std"] for n in manifest["norm"]], dtype=np.float32)[None, :, None]
-    X = (X - mean) / std
-
     ckpt_dir = resolve_ckpt_dir(experiment, model_name, split_name, window_plan, ckpt_dir)
-    model, ckpt = load_best_model(ckpt_dir, model_name, X.shape[1], device)
+    model, ckpt = load_best_model(ckpt_dir, model_name, len(roles), device)
+    norm = ckpt.get("config", {}).get("norm")
+    if not norm:
+        raise KeyError(f"权重中缺少训练期标准化参数：{ckpt_dir}")
+    mean = np.array([n["mean"] for n in norm], dtype=np.float32)[None, :, None]
+    std = np.array([n["std"] for n in norm], dtype=np.float32)[None, :, None]
+    X = (X - mean) / std
     with torch.no_grad():
         xb = torch.from_numpy(X).to(device)
         out = model(xb)
