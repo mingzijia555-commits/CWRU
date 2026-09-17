@@ -1,0 +1,10 @@
+{
+  "description": "CWRU 90组正式实验",
+  "split_sets": ["A", "B", "C"],
+  "window_plans": ["no_overlap", "overlap50"],
+  "input_experiments": ["dual101", "109DEFE", "101DEFE", "109DE", "101DE"],
+  "models": ["Cnn1d", "CnnGru", "CnnLstm"],
+  "total_runs": 90,
+  "train_seed": 42,
+  "max_epochs": 80
+}

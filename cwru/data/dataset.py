@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
 """实验数组构建与 Dataset。
 
-每个「划分集 × 窗口方案 × 输入方案」组合的数据布局在 prepare 阶段固化：
-- 先按文件清单划分 train/val/test，再在各集合内部切窗口；
+先按文件清单划分 train/val/test，再在各集合内部切窗口：
 - 窗口长度固定 1024，步长由窗口方案决定（无重叠 1024 / 50% 重叠 512）；
 - 归一化参数仅由该组合训练集窗口计算；
-- 实验数组按需在内存中构建，不写入窗口缓存。
+- 实验数组按需在内存中构建，不写入缓存或额外清单。
 """
 from __future__ import annotations
-
-import json
-import os
 
 import numpy as np
 import torch
 
-from cwru.config import (CLASSES, MANIFESTS_DIR, REG_SCALE, SIGNAL_SR,
+from cwru.config import (CLASSES, REG_SCALE, SIGNAL_SR,
                          WINDOW_LEN, WINDOW_PLANS)
 from cwru.data.audit import FileRecord
 from cwru.data.signals import load_channel, make_windows
@@ -33,11 +29,6 @@ def channel_roles_for(exp_cfg: dict, record: FileRecord) -> list[str]:
     if scheme == "de":
         return ["DE"]
     raise ValueError(f"未知通道方案: {scheme}")
-
-
-def run_key(split_name: str, exp_id: str, window_plan: str) -> str:
-    """实验清单的复合键：划分集 + 输入方案 + 窗口方案。"""
-    return f"{split_name}_{exp_id}_{window_plan}"
 
 
 def build_experiment_arrays(exp_id: str, exp_cfg: dict, records: list[FileRecord],
@@ -141,45 +132,6 @@ def build_experiment_arrays(exp_id: str, exp_cfg: dict, records: list[FileRecord
     }
 
 
-def manifest_path(key: str) -> str:
-    return os.path.join(MANIFESTS_DIR, f"experiment_{key}.json")
-
-
-def get_experiment_arrays(split_name: str, exp_id: str, exp_cfg: dict,
-                          records: list[FileRecord], split_of: dict[str, str],
-                          window_plan: str = "no_overlap") -> dict:
-    """直接构建实验数组，并更新对应实验清单。"""
-    key = run_key(split_name, exp_id, window_plan)
-    arrays = build_experiment_arrays(exp_id, exp_cfg, records, split_of, window_plan)
-    save_experiment_manifest(key, split_name, exp_id, exp_cfg, window_plan, arrays, split_of)
-    return arrays
-
-
-def save_experiment_manifest(key: str, split_name: str, exp_id: str, exp_cfg: dict,
-                             window_plan: str, arrays: dict, split_of: dict[str, str]) -> str:
-    manifest = {
-        "key": key,
-        "split_set": split_name,
-        "experiment": exp_id,
-        "window_plan": window_plan,
-        "config": exp_cfg,
-        "files": arrays["files"],
-        "norm": arrays["norm"],
-        "class_weights": arrays["class_weights"],
-        "train_class_counts": arrays["train_class_counts"],
-        "sr": arrays["sr"],
-        "window_len": arrays["window_len"],
-        "stride": arrays["stride"],
-        "split_file": f"splits/{split_name}/split_{exp_cfg['files']}.json",
-        "split": split_of,
-    }
-    path = manifest_path(key)
-    os.makedirs(MANIFESTS_DIR, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=2)
-    return path
-
-
 class CwruDataset:
     """基于已构建数组的 Torch 数据集（数据已归一化）。"""
 
@@ -201,16 +153,3 @@ class CwruDataset:
     def __getitem__(self, i: int):
         return (torch.from_numpy(self.X[i]), int(self.y_cls[i]),
                 float(self.y_reg[i]), bool(self.reg_mask[i]))
-
-
-def subset_arrays(arrays: dict, split: str) -> dict:
-    """按划分名抽取子数组（评估/指标计算使用）。"""
-    file_split = np.array([m["split"] for m in arrays["files"]])
-    sel = np.isin(arrays["file_idx"], np.where(file_split == split)[0])
-    return {
-        "X": arrays["X"][sel],
-        "y_cls": arrays["y_cls"][sel],
-        "y_reg": arrays["y_reg"][sel],
-        "reg_mask": arrays["reg_mask"][sel],
-        "file_idx": arrays["file_idx"][sel],
-    }

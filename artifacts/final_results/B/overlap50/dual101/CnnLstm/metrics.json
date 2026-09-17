@@ -1,0 +1,187 @@
+{
+  "split_set": "B",
+  "window_plan": "overlap50",
+  "window_display": "50%重叠 1024/512",
+  "experiment": "dual101",
+  "display": "双端(101文件,DE+FE)",
+  "model": "CnnLstm",
+  "checkpoint": {
+    "epoch": 36,
+    "val_loss": 0.009653296493509609,
+    "stride": 512
+  },
+  "n_test_windows": 3545,
+  "n_test_files": 15,
+  "window_level": {
+    "n_windows": 3545,
+    "accuracy": 0.9864598025387871,
+    "macro_f1": 0.98937413994274,
+    "confusion_matrix": [
+      [
+        236,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        945,
+        0,
+        2
+      ],
+      [
+        0,
+        9,
+        1371,
+        37
+      ],
+      [
+        0,
+        0,
+        0,
+        945
+      ]
+    ],
+    "per_class": {
+      "0": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 236
+      },
+      "1": {
+        "precision": 0.9905660377358491,
+        "recall": 0.9978880675818373,
+        "f1": 0.9942135718043135,
+        "support": 947
+      },
+      "2": {
+        "precision": 1.0,
+        "recall": 0.9675370501058574,
+        "f1": 0.9835007173601148,
+        "support": 1417
+      },
+      "3": {
+        "precision": 0.9603658536585366,
+        "recall": 1.0,
+        "f1": 0.9797822706065318,
+        "support": 945
+      }
+    },
+    "regression": {
+      "mae_scaled": 0.09368905425071716,
+      "rmse_scaled": 0.19685204327106476,
+      "mae_mil": 0.6558233499526978,
+      "rmse_mil": 1.3779642581939697,
+      "per_diameter": {
+        "7mil": {
+          "n": 1183,
+          "mae_scaled": 0.04642467200756073,
+          "rmse_scaled": 0.0747903361916542,
+          "mae_mil": 0.3249726891517639,
+          "rmse_mil": 0.5235323309898376
+        },
+        "14mil": {
+          "n": 709,
+          "mae_scaled": 0.0967237651348114,
+          "rmse_scaled": 0.13096217811107635,
+          "mae_mil": 0.6770663261413574,
+          "rmse_mil": 0.9167352318763733
+        },
+        "21mil": {
+          "n": 1417,
+          "mae_scaled": 0.13162989914417267,
+          "rmse_scaled": 0.2779204845428467,
+          "mae_mil": 0.9214093089103699,
+          "rmse_mil": 1.9454433917999268
+        }
+      }
+    }
+  },
+  "file_level": {
+    "n_files": 15,
+    "n_fault_files": 14,
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "per_class": {
+      "0": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "1": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "2": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6
+      },
+      "3": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      }
+    },
+    "regression": {
+      "mae_mil": 0.4034517705440521,
+      "rmse_mil": 0.8384171724319458,
+      "n_fault_files": 14
+    }
+  },
+  "or_clock": {
+    "3点钟": {
+      "n_windows": 471,
+      "or_recall": 0.921443736730361,
+      "mae_mil": 0.45740821957588196,
+      "rmse_mil": 0.8854209780693054
+    },
+    "6点钟": {
+      "n_windows": 710,
+      "or_recall": 0.9873239436619718,
+      "mae_mil": 0.5939313173294067,
+      "rmse_mil": 0.7929995656013489
+    },
+    "12点钟": {
+      "n_windows": 236,
+      "or_recall": 1.0,
+      "mae_mil": 0.21407097578048706,
+      "rmse_mil": 0.3983170688152313
+    }
+  },
+  "mil28": {
+    "n_windows": 0
+  }
+}

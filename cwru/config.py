@@ -7,11 +7,6 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(PROJECT_ROOT, "CaseWesternReserveUniversityData")
 ARTIFACTS_DIR = os.path.join(PROJECT_ROOT, "artifacts")
-MANIFESTS_DIR = os.path.join(ARTIFACTS_DIR, "manifests")
-RUNS_DIR = os.path.join(ARTIFACTS_DIR, "runs")
-METRICS_DIR = os.path.join(ARTIFACTS_DIR, "metrics")
-FIGURES_DIR = os.path.join(ARTIFACTS_DIR, "figures")
-FULL_RUNS_DIR = os.path.join(ARTIFACTS_DIR, "full_runs")
 SPLITS_DIR = os.path.join(PROJECT_ROOT, "splits")
 
 # 信号与窗口
@@ -41,8 +36,6 @@ BATCH_SIZE = 128
 MAX_EPOCHS = 80
 LR = 1e-3
 WEIGHT_DECAY = 1e-4
-LR_PATIENCE = 4            # ReduceLROnPlateau 耐心值
-LR_FACTOR = 0.5
 ES_PATIENCE = 12           # EarlyStopping 耐心值
 
 MODELS = ["Cnn1d", "CnnGru", "CnnLstm"]
@@ -64,16 +57,6 @@ EXPERIMENT_ORDER = ["dual101", "109DEFE", "101DEFE", "109DE", "101DE"]
 SPLIT_SETS = ["A", "B", "C"]
 SPLIT_NAMES = ["train", "val", "test"]
 
-# 数量硬约束
-GROUP4_TARGETS = (2, 1, 1)         # Normal / B028 / IR028 各 4 文件
-SPLIT_TARGETS_101 = (71, 15, 15)   # 97 故障 + 4 Normal
-SPLIT_TARGETS_109 = (75, 17, 17)   # 101 公共 + B028 + IR028
-
-# 正式实验总数
-N_FORMAL_RUNS = len(SPLIT_SETS) * len(WINDOW_PLAN_ORDER) * len(EXPERIMENT_ORDER) * len(MODELS)
-
-
 def ensure_dirs() -> None:
-    for d in (ARTIFACTS_DIR, MANIFESTS_DIR, RUNS_DIR, METRICS_DIR, FIGURES_DIR,
-              FULL_RUNS_DIR, SPLITS_DIR):
+    for d in (ARTIFACTS_DIR, SPLITS_DIR):
         os.makedirs(d, exist_ok=True)
