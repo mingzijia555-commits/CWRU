@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 
 from cwru.config import (ARTIFACTS_DIR, EXPERIMENTS, EXPERIMENT_ORDER, MODELS,
                          MAX_EPOCHS, SPLIT_SETS, TRAIN_SEED, WINDOW_PLAN_ORDER,
-                         ensure_dirs)
+                         SPLITS_DIR, ensure_dirs)
 from cwru.data.audit import audit_all
 from cwru.data.dataset import build_experiment_arrays
 from cwru.data.split import load_all_splits
@@ -19,7 +20,8 @@ from cwru.evaluation.evaluate import evaluate_run
 from cwru.training.trainer import train_model
 
 
-RESULT_DIR = os.path.join(ARTIFACTS_DIR, "final_results")
+RESULT_DIR = os.environ.get(
+    "CWRU_RESULT_DIR", os.path.join(ARTIFACTS_DIR, "final_results"))
 
 
 def write_result_readme(path: str) -> None:
@@ -29,7 +31,7 @@ def write_result_readme(path: str) -> None:
 
 - 每个实验文件夹中的 `best_inference.pt`：该组验证集效果最好的模型，可用于预测。
 - `metrics.json`：测试集上的准确率、F1 等指标。
-- `history.csv`：训练过程中损失和准确率的变化。
+- `history.json`：训练过程中损失和准确率的变化。
 - `files.csv`：该组使用的数据文件清单。
 - `figures/`：训练曲线和混淆矩阵。
 - `comparisons/`：把 90 组结果汇总后的表格和图。
@@ -60,6 +62,11 @@ def write_experiment_config(records: list, path: str) -> None:
         json.dump(config, f, ensure_ascii=False, indent=2)
 
 
+def copy_split_snapshots(path: str) -> None:
+    """把本轮使用的固定划分一并保存，方便之后解释结果。"""
+    shutil.copytree(SPLITS_DIR, os.path.join(path, "splits"), dirs_exist_ok=True)
+
+
 def main() -> None:
     ensure_dirs()
     if os.path.exists(RESULT_DIR) and os.listdir(RESULT_DIR):
@@ -71,6 +78,7 @@ def main() -> None:
     records = audit_all()
     write_result_readme(os.path.join(RESULT_DIR, "README.md"))
     write_experiment_config(records, os.path.join(RESULT_DIR, "experiment_config.json"))
+    copy_split_snapshots(RESULT_DIR)
 
     for split_name in SPLIT_SETS:
         split_files = load_all_splits(split_name)

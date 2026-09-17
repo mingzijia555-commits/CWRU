@@ -14,6 +14,13 @@ python run_experiments.py
 
 程序按“3 套划分 × 2 种窗口 × 5 种输入 × 3 种模型”运行 90 组实验，并把结果写入 `artifacts/final_results/`。已有正式结果时程序会停止，避免误覆盖。
 
+如果要把新一轮结果单独保存到别的目录，可以在 PowerShell 中指定目录：
+
+```powershell
+$env:CWRU_RESULT_DIR = "artifacts/final_results_adam_mse"
+python run_experiments.py
+```
+
 ### 对一个 MAT 文件进行预测
 
 打开 `predict_one.py`，修改文件路径、实验方案和模型名称，然后运行：
