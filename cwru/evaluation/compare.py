@@ -190,6 +190,7 @@ def run_compare(batch_dir: str, verbose: bool = True) -> dict:
     conclusions = summarize_conclusions(rows, summary)
     with open(os.path.join(comp_dir, "conclusions.json"), "w", encoding="utf-8") as f:
         json.dump(conclusions, f, ensure_ascii=False, indent=2)
+    plots.plot_final_overview(rows, conclusions, comp_dir)
 
     if verbose:
         print(f"[compare] {len(rows)} 组结果 -> {comp_dir}")
