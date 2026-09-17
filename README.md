@@ -45,6 +45,8 @@ python predict_one.py
 - `figures/`：训练曲线和混淆矩阵；
 - `comparisons/`：90 组结果的汇总表和对比图。
 
+固定的 A/B/C 划分只由 `splits/*/split_101.json` 和 `split_109.json` 保存；项目不再自动生成 `metadata.csv` 或 `balance.csv` 汇总表。
+
 旧的 10 组阶段性结果仍保存在 `artifacts/full_runs/legacy_20260915_1353_original/`，只作为过程记录，没有删除，也不计入 90 组正式汇总。
 
 ## 汇报时可以这样说明

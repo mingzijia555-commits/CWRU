@@ -272,22 +272,12 @@ splits/
 ├── A/
 │   ├── split_101.json
 │   ├── split_109.json
-│   ├── balance.csv
 │   └── README.md
 ├── B/
 └── C/
 ```
 
-`balance.csv` 至少记录：
-
-- 各集合文件总数
-- Drive/Fan 数量
-- Normal/IR/OR/B 数量
-- 各故障直径数量
-- 各负载数量
-- OR 各点钟位置数量
-
-划分 README 说明固定名单来源、约束、实际分布和稀有组合。
+划分 README 说明固定名单来源、约束、实际分布和稀有组合；类别和条件统计在运行时由原始 MAT 文件审计结果计算，不额外保存汇总 CSV。
 
 ### 5.7 划分验收
 

@@ -3,6 +3,8 @@
 
 划分名单保存在项目根目录的 splits/A、splits/B、splits/C 中。
 训练、验证和测试先按完整 MAT 文件划分，再在各集合内部切窗口。
+划分模块只读取固定的 split_101.json / split_109.json，不生成额外的
+metadata.csv 或 balance.csv 汇总表；类别和条件信息在运行时由 MAT 文件审计得到。
 """
 from __future__ import annotations
 

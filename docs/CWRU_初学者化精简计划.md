@@ -231,7 +231,6 @@ batch.py 最后把完成时间和总体结论写入总 README
 | `manifests` | 记录每组实验用了哪些配置 | 暂时保留，不在本轮删除范围内 |
 | `runs` | 通过单组训练命令产生的结果 | **全部保留** |
 | `full_runs` | 完整批量实验及其历史结果 | **全部保留** |
-| `metadata.csv` | 109 个数据文件的基本信息表 | **保留** |
 
 正式批次名称为：`20260915_175843`
 
@@ -334,7 +333,6 @@ CWRU/
 │       ├── plots.py                  # 不动
 │       └── compare.py                # 不动，保留总汇总功能
 └── artifacts/
-    ├── metadata.csv                  # 保留
     ├── manifests/                    # 暂时保留
     ├── runs/                         # 全部保留
     └── full_runs/                    # 全部保留
@@ -372,7 +370,7 @@ CWRU/
 - `compare.py` 全部总体汇总代码；
 - `batch.py` 中生成配置、划分快照、总 README 和记录结果的功能；
 - `fullrun.py` 的 90 组训练、评价、汇总流程；
-- `runs`、`full_runs`、`metadata.csv` 的全部现有内容；
+- `runs`、`full_runs` 的全部现有内容；
 - 所有说明文档；
 - 90 组正式实验的全部结果、图片和权重。
 
@@ -409,7 +407,7 @@ CWRU/
 5. 从 `config.py` 的 `ensure_dirs()` 中移除缓存目录；
 6. 更新 README 中关于缓存的说明。
 
-删除缓存不影响 `runs`、`full_runs`、`metadata.csv`、模型权重、指标、图片和比较结果。
+删除缓存不影响 `runs`、`full_runs`、模型权重、指标、图片和比较结果。
 
 ### 第四步：按约定处理结果评价代码
 
@@ -484,7 +482,7 @@ CWRU/
 整理完成后，只要满足下面这些条件即可：
 
 - [ ] 完整版代码和 90 组正式结果已经备份；
-- [ ] `runs`、`full_runs` 和 `metadata.csv` 全部保留；
+- [ ] `runs`、`full_runs` 全部保留；
 - [ ] 所有 Markdown 说明文档全部保留；
 - [ ] `metrics.py`、`plots.py` 和 `compare.py` 未被修改；
 - [ ] 只对 `evaluate.py` 做了约定范围内的简化；

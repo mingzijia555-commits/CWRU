@@ -43,7 +43,6 @@
 - `figures/`：损失曲线、验证曲线、混淆矩阵和对比图
 - `manifests/`：旧版文件划分与实验清单
 - `cache/`：本批次生成的窗口缓存
-- `metadata.csv`：数据文件审计元数据
 - `logs/gpu_power.log`：训练期间的GPU功耗记录
 - `archive_manifest.csv`：本归档副本的文件清单、大小和时间戳
 
