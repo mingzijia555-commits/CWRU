@@ -52,6 +52,9 @@ def write_experiment_config(records: list, path: str) -> None:
                   * len(EXPERIMENT_ORDER) * len(MODELS),
         "train_seed": TRAIN_SEED,
         "max_epochs": MAX_EPOCHS,
+        "optimizer": "Adam",
+        "regression_loss": "MSE",
+        "lr_scheduler": "none",
     }
     with open(path, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=2)

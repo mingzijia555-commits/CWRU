@@ -2,8 +2,8 @@
 """训练规则：损失、优化器与训练循环。
 
 - 分类：带逆平方根类别权重的交叉熵；
-- 回归：Smooth L1，仅故障样本参与（Normal 掩码）；
-- 总损失 = 分类损失 + 回归损失，作为早停/学习率调度/最佳权重保存的唯一监控指标。
+- 回归：均方误差，仅故障样本参与（Normal 掩码）；
+- 总损失 = 分类损失 + 回归损失，作为早停和最佳权重保存的监控指标。
 """
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from cwru.config import (BATCH_SIZE, ES_PATIENCE, LR, LR_FACTOR, LR_PATIENCE,
-                         MAX_EPOCHS, SEED, TRAIN_SEED, WEIGHT_DECAY)
+from cwru.config import (BATCH_SIZE, ES_PATIENCE, LR, MAX_EPOCHS, SEED,
+                         TRAIN_SEED, WEIGHT_DECAY)
 from cwru.data.dataset import CwruDataset
 from cwru.models.models import build_model
 
@@ -36,7 +36,7 @@ def total_loss_from(outputs: dict, y_cls: torch.Tensor, y_reg: torch.Tensor,
     """返回 (总损失, 分类损失, 回归损失)。"""
     cls_loss = F.cross_entropy(outputs["logits"], y_cls, weight=class_weights)
     if reg_mask.any():
-        reg_loss = F.smooth_l1_loss(outputs["diameter"][reg_mask], y_reg[reg_mask])
+        reg_loss = F.mse_loss(outputs["diameter"][reg_mask], y_reg[reg_mask])
     else:
         reg_loss = torch.zeros((), device=y_cls.device)
     return cls_loss + reg_loss, cls_loss, reg_loss
@@ -116,9 +116,7 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
                               num_workers=0, drop_last=False)
     val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=LR_FACTOR, patience=LR_PATIENCE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
 
     config = {
         "split_set": split_name,
@@ -128,13 +126,14 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
         "experiment": experiment,
         "display": exp_cfg.get("display", ""),
         "model": model_name,
+        "optimizer": "Adam",
+        "regression_loss": "MSE",
+        "lr_scheduler": "none",
         "in_channels": in_channels,
         "batch_size": BATCH_SIZE,
         "max_epochs": epochs,
         "lr": LR,
         "weight_decay": WEIGHT_DECAY,
-        "lr_patience": LR_PATIENCE,
-        "lr_factor": LR_FACTOR,
         "es_patience": ES_PATIENCE,
         "seed": seed,
         "class_weights": arrays["class_weights"],
@@ -185,8 +184,6 @@ def train_model(experiment: str, exp_cfg: dict, arrays: dict, model_name: str,
             "lr": lr_now,
             **val_metrics,
         })
-        scheduler.step(val_metrics["val_loss"])
-
         improved = val_metrics["val_loss"] < best_val_loss - 1e-6
         if improved:
             best_val_loss = val_metrics["val_loss"]

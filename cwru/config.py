@@ -36,8 +36,6 @@ BATCH_SIZE = 128
 MAX_EPOCHS = 80
 LR = 1e-3
 WEIGHT_DECAY = 1e-4
-LR_PATIENCE = 4            # ReduceLROnPlateau 耐心值
-LR_FACTOR = 0.5
 ES_PATIENCE = 12           # EarlyStopping 耐心值
 
 MODELS = ["Cnn1d", "CnnGru", "CnnLstm"]
