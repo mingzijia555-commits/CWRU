@@ -128,7 +128,7 @@ def or_clock_breakdown(y_cls: np.ndarray, y_pred: np.ndarray,
     clock_of_file = {m["index"]: m["or_clock"] for m in files if m["fault"] == "OR"}
     out = {}
     for clock in (3, 6, 12):
-        sel = np.array([clock_of_file.get(int(fi)) == clock and True for fi in file_idx])
+        sel = np.array([clock_of_file.get(int(fi)) == clock for fi in file_idx])
         sel = sel & (y_cls == 2)  # 仅 OR 窗口
         if not sel.any():
             out[f"{clock}点钟"] = {"n_windows": 0}

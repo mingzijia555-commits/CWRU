@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 import os
 import statistics
 
@@ -37,8 +36,6 @@ def collect_batch_metrics(batch_dir: str) -> list[dict]:
             for exp in EXPERIMENT_ORDER:
                 for model in MODELS:
                     path = os.path.join(batch_dir, split_name, plan, exp, model, "metrics.json")
-                    if not os.path.exists(path):
-                        continue
                     with open(path, "r", encoding="utf-8") as f:
                         m = json.load(f)
                     rows.append({
@@ -75,7 +72,7 @@ def _write_csv(path: str, fields: list[str], rows: list[dict]) -> str:
 
 
 def _stat(vals: list[float]) -> dict:
-    vals = [v for v in vals if v is not None and not (isinstance(v, float) and math.isnan(v))]
+    vals = [v for v in vals if v is not None]
     if not vals:
         return {"mean": None, "std": None, "min": None, "max": None, "n": 0}
     return {
@@ -114,10 +111,6 @@ def build_mean_std(rows: list[dict]) -> tuple[list[dict], dict]:
 
 def summarize_conclusions(rows: list[dict], summary: dict) -> dict:
     """生成关键比较结论（最佳分类/回归模型、重叠与划分影响）。"""
-    def mean_of(plan: str, exp: str, model: str, metric: str):
-        e = summary.get(f"{plan}/{exp}/{model}")
-        return e.get(f"{metric}_mean") if e else None
-
     # 最佳分类：窗口 Macro-F1 平均最高
     cls_candidates = [(k, v.get("window_macro_f1_mean")) for k, v in summary.items()
                       if v.get("window_macro_f1_mean") is not None]
@@ -171,8 +164,6 @@ def summarize_conclusions(rows: list[dict], summary: dict) -> dict:
 def run_compare(batch_dir: str, verbose: bool = True) -> dict:
     """汇总批次：写出 comparisons/ 下的 CSV 与对比图，返回结论字典。"""
     rows = collect_batch_metrics(batch_dir)
-    if not rows:
-        raise RuntimeError(f"批次目录中未找到任何 metrics.json：{batch_dir}")
 
     comp_dir = os.path.join(batch_dir, "comparisons")
     os.makedirs(comp_dir, exist_ok=True)

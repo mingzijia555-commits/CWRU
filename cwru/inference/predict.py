@@ -54,8 +54,6 @@ def predict_file(experiment: str, model_name: str, mat_path: str,
     ckpt_dir = resolve_ckpt_dir(experiment, model_name, split_name, window_plan, ckpt_dir)
     model, ckpt = load_best_model(ckpt_dir, model_name, len(roles), device)
     norm = ckpt.get("config", {}).get("norm")
-    if not norm:
-        raise KeyError(f"权重中缺少训练期标准化参数：{ckpt_dir}")
     mean = np.array([n["mean"] for n in norm], dtype=np.float32)[None, :, None]
     std = np.array([n["std"] for n in norm], dtype=np.float32)[None, :, None]
     X = (X - mean) / std

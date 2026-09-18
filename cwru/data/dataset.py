@@ -11,8 +11,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from cwru.config import (CLASSES, REG_SCALE, SIGNAL_SR,
-                         WINDOW_LEN, WINDOW_PLANS)
+from cwru.config import CLASSES, REG_SCALE, SIGNAL_SR, WINDOW_PLANS
 from cwru.data.audit import FileRecord
 from cwru.data.signals import load_channel, make_windows
 
@@ -50,14 +49,11 @@ def build_experiment_arrays(exp_id: str, exp_cfg: dict, records: list[FileRecord
     files_meta: list[dict] = []
 
     used = [r for r in records if r.filename in split_of]
-    assert len(used) == len(split_of), (len(used), len(split_of))
 
     for fi, rec in enumerate(sorted(used, key=lambda r: r.filename)):
         roles = channel_roles_for(exp_cfg, rec)
         channels = [load_channel(rec, role) for role in roles]
         n_win = min((len(c) - window_len) // stride + 1 for c in channels)
-        if n_win <= 0:
-            raise ValueError(f"{rec.filename}: 信号过短，无法切窗")
         end = (n_win - 1) * stride + window_len
         chans = [make_windows(c[:end], window_len, stride) for c in channels]
         x = np.stack(chans, axis=1)                       # [n_win, n_channels, 1024]

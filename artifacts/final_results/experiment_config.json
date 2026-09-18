@@ -1,0 +1,50 @@
+{
+  "n_data_files": 109,
+  "split_sets": [
+    "A",
+    "B",
+    "C"
+  ],
+  "window_plans": [
+    "no_overlap",
+    "overlap50"
+  ],
+  "experiments": {
+    "dual101": {
+      "files": "101",
+      "channels": "dual",
+      "display": "双端(101文件,DE+FE)"
+    },
+    "109DEFE": {
+      "files": "109",
+      "channels": "defe",
+      "display": "109文件 DE/FE 单通道"
+    },
+    "101DEFE": {
+      "files": "101",
+      "channels": "defe",
+      "display": "101文件 DE/FE 单通道"
+    },
+    "109DE": {
+      "files": "109",
+      "channels": "de",
+      "display": "109文件 全DE"
+    },
+    "101DE": {
+      "files": "101",
+      "channels": "de",
+      "display": "101文件 全DE"
+    }
+  },
+  "models": [
+    "Cnn1d",
+    "CnnGru",
+    "CnnLstm"
+  ],
+  "n_runs": 90,
+  "train_seed": 42,
+  "max_epochs": 80,
+  "optimizer": "Adam",
+  "regression_loss": "MSE",
+  "lr_scheduler": "none"
+}

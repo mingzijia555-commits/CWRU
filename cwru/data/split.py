@@ -17,8 +17,6 @@ from cwru.config import SPLIT_NAMES, SPLITS_DIR
 def load_split(file_set: str, split_name: str) -> dict[str, str]:
     """读取一个文件集合（101 或 109）的一套固定划分。"""
     path = os.path.join(SPLITS_DIR, split_name, f"split_{file_set}.json")
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"固定划分不存在：{path}")
     with open(path, "r", encoding="utf-8") as f:
         mapping = json.load(f)
 

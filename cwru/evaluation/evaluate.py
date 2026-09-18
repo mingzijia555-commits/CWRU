@@ -45,21 +45,9 @@ def load_best_model(ckpt_dir: str, model_name: str, in_channels: int,
                     device: torch.device) -> tuple[torch.nn.Module, dict]:
     """从指定实验目录加载最佳推理权重。"""
     best_path = os.path.join(ckpt_dir, "best_inference.pt")
-    if not os.path.exists(best_path):
-        raise FileNotFoundError(
-            f"未找到推理权重：{best_path}\n请检查划分集/窗口方案/输入方案/模型是否与实际训练一致")
-    # 旧实验的 config 中包含 NumPy 数组，只对白名单中的数组类型开放反序列化。
-    numpy_types = [np.ndarray, np._core.multiarray._reconstruct,
-                   np.dtype, np.dtypes.Float32DType]
-    with torch.serialization.safe_globals(numpy_types):
-        ckpt = torch.load(best_path, map_location=device, weights_only=True)
+    ckpt = torch.load(best_path, map_location=device)
     model = build_model(model_name, in_channels).to(device)
-    try:
-        model.load_state_dict(ckpt["model_state"])
-    except RuntimeError as exc:
-        raise RuntimeError(
-            f"权重与当前实验通道数不匹配（当前 in_channels={in_channels}，权重目录 {ckpt_dir}）。"
-            f"请确认输入方案（dual101 为双通道，其余为单通道）与权重来源一致。原始错误：{exc}") from exc
+    model.load_state_dict(ckpt["model_state"])
     model.eval()
     return model, ckpt
 
