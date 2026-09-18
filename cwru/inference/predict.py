@@ -7,7 +7,7 @@ import os
 import numpy as np
 import torch
 
-from cwru.config import ARTIFACTS_DIR, CLASSES, EXPERIMENTS, WINDOW_PLANS
+from cwru.config import ARTIFACTS_DIR, CLASSES, EXPERIMENTS, REG_SCALE, WINDOW_PLANS
 from cwru.data.audit import load_record
 from cwru.data.signals import load_channel, make_windows
 from cwru.evaluation.evaluate import load_best_model
@@ -65,8 +65,8 @@ def predict_file(experiment: str, model_name: str, mat_path: str,
 
     pred_cls = int(probs.mean(axis=0).argmax())
     mean_prob = probs.mean(axis=0)
-    raw_dia = float(dia.mean()) * 7.0
-    final_dia = 0.0 if pred_cls == 0 else raw_dia
+    raw_dia = None if pred_cls == 0 else float(dia.mean()) * REG_SCALE
+    final_dia = 0.0 if raw_dia is None else raw_dia
 
     per_window_classes = probs.argmax(axis=1)
     class_share = {CLASSES[c]: float((per_window_classes == c).mean()) for c in range(4)}
@@ -82,13 +82,17 @@ def predict_file(experiment: str, model_name: str, mat_path: str,
     print(f"预测类别  : {CLASSES[pred_cls]}")
     for c in range(4):
         print(f"  P({CLASSES[c]:6s}) = {mean_prob[c]:.4f}")
-    print(f"回归原始直径: {raw_dia:.2f} mil")
-    print(f"最终显示直径: {final_dia:.2f} mil"
-          + ("（预测为 Normal，直径置 0）" if pred_cls == 0 else ""))
+    if raw_dia is None:
+        print("直径预测  : Normal 样本不参与回归")
+    else:
+        print(f"预测直径  : {raw_dia:.2f} mil")
+    print(f"最终显示直径: {final_dia:.2f} mil")
     print("窗口统计摘要:")
     print(f"  窗口类别占比: { {k: round(v, 3) for k, v in class_share.items()} }")
-    print(f"  直径预测 mean={float(dia.mean()) * 7.0:.2f} mil, "
-          f"std={float(dia.std()) * 7.0:.2f} mil, median={float(np.median(dia)) * 7.0:.2f} mil")
+    if raw_dia is not None:
+        print(f"  直径预测 mean={raw_dia:.2f} mil, "
+              f"std={float(dia.std()) * REG_SCALE:.2f} mil, "
+              f"median={float(np.median(dia)) * REG_SCALE:.2f} mil")
     print("=" * 64)
 
     return {

@@ -368,6 +368,10 @@ def plot_final_overview(rows: list[dict], conclusions: dict, fig_dir: str) -> st
     best_cls_f1 = conclusions["best_classification_macro_f1"]
     best_reg = readable_config(conclusions["best_regression"])
     best_reg_mae = conclusions["best_regression_mae_mil"]
+    best_model_cls = model_order[int(np.argmax(model_f1))]
+    best_model_reg = model_order[int(np.argmin(model_mae))]
+    best_plan = plan_order[int(np.argmax(plan_f1))]
+    hardest_split = split_order[int(np.argmin(split_f1))]
     fig.text(0.06, 0.955, "CWRU 轴承故障诊断 · 90组实验最终结果总览",
              fontsize=22, fontweight="bold", color="#243447")
     fig.text(0.06, 0.915,
@@ -385,7 +389,8 @@ def plot_final_overview(rows: list[dict], conclusions: dict, fig_dir: str) -> st
         fig.text(x0, 0.812, note, fontsize=9, color="#5B6573")
 
     fig.text(0.06, 0.035,
-             "读图结论：分类上 CnnGru 平均最好；直径回归上 CnnLstm 最好；50%重叠略有增益；划分C明显更难。"
+             f"读图结论：分类上 {best_model_cls} 平均最好；直径回归上 {best_model_reg} 平均最好；"
+             f"{plan_labels[best_plan]}分类表现更好；划分{hardest_split}明显更难。"
              " 误差线为组内总体标准差。",
              fontsize=10.5, color="#243447")
     return _save(fig, fig_dir, "final_results_overview.png", tight=False)
